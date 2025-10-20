@@ -1,0 +1,12 @@
+/* In your main CSS file (e.g., index.css or app.css) */
+@import "tailwindcss";
+
+body {
+  /* A slightly off-white background makes the cards stand out */
+  @apply bg-slate-50; 
+  
+  /* A dark slate color is softer on the eyes than pure black */
+  @apply text-slate-700; 
+
+  @apply font-sans;
+}

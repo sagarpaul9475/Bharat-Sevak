@@ -1,0 +1,20 @@
+[
+{
+"id":1,
+"title_bn":"ডাটা এন্ট্রি ১০টি আইটেম",
+"title_en":"Data Entry 10 Items",
+"description_bn":"সিস্টেমে ১০টি আইটেমের ডাটা ইনপুট করুন।",
+"description_en":"Input 10 items data into system.",
+"productionValue":50,
+"completed":false
+},
+{
+"id":2,
+"title_bn":"ডিজাইন রিপোর্ট",
+"title_en":"Design Report",
+"description_bn":"আজকের প্রোডাকশন রিপোর্ট ডিজাইন করুন।",
+"description_en":"Design today's production report.",
+"productionValue":30,
+"completed":false
+}
+]
