@@ -1,12 +1,1 @@
-/* In your main CSS file (e.g., index.css or app.css) */
-@import "tailwindcss";
-
-body {
-  /* A slightly off-white background makes the cards stand out */
-  @apply bg-slate-50; 
-  
-  /* A dark slate color is softer on the eyes than pure black */
-  @apply text-slate-700; 
-
-  @apply font-sans;
-}
+@import "tailwindcss";*{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#172033;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}

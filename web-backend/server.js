@@ -1,40 +1,23 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
-
-const authRoutes = require('./routes/authRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
-const productRoutes = require('./routes/productRoutes');
-const serviceRoutes = require('./routes/serviceRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const providerRoutes = require('./routes/providerRoutes');
-const reportRoutes = require('./routes/reportRoutes');
-
-const app = express();
-app.use(cors({ origin: process.env.CLIENT_URL || true }));
-app.use(express.json());
-
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'bharat-sevak' }));
-
-app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/provider', providerRoutes);
-app.use('/api/reports', reportRoutes);
-
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/bharat_sevak';
-
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    app.listen(PORT, () => console.log(`Bharat Sevak API running on ${PORT}`));
-  })
-  .catch((err) => {
-    console.error('MongoDB connection failed:', err.message);
-    process.exit(1);
-  });
+require('dotenv').config();const express=require('express'),cors=require('cors'),mongoose=require('mongoose'),bcrypt=require('bcryptjs'),jwt=require('jsonwebtoken');const app=express();app.use(cors({origin:true}));app.use(express.json());const Schema=mongoose.Schema;
+const User=mongoose.model('User',new Schema({name:{type:String,required:true},phone:{type:String,unique:true,required:true},email:String,password:{type:String,required:true},role:{type:String,enum:['customer','provider','admin'],default:'customer'},status:{type:String,enum:['active','pending','approved','rejected'],default:'active'},profile:{area:String,address:String,serviceTypes:[String],productTypes:[String],document:String}},{timestamps:true}));
+const Category=mongoose.model('Category',new Schema({name:String,slug:{type:String,unique:true},kind:{type:String,enum:['product','service']},parent:{type:Schema.Types.ObjectId,ref:'Category',default:null},active:{type:Boolean,default:true}},{timestamps:true}));
+const Product=mongoose.model('Product',new Schema({provider:{type:Schema.Types.ObjectId,ref:'User'},category:{type:Schema.Types.ObjectId,ref:'Category'},name:String,description:String,price:Number,unit:{type:String,default:'piece'},stock:{type:Number,default:0},status:{type:String,enum:['pending','approved','rejected'],default:'pending'},rejectionReason:String},{timestamps:true}));
+const Service=mongoose.model('Service',new Schema({provider:{type:Schema.Types.ObjectId,ref:'User'},category:{type:Schema.Types.ObjectId,ref:'Category'},title:String,description:String,rate:Number,rateUnit:{type:String,default:'job'},area:String,available:{type:Boolean,default:true},status:{type:String,enum:['pending','approved','rejected'],default:'pending'},rejectionReason:String},{timestamps:true}));
+const Order=mongoose.model('Order',new Schema({customer:{type:Schema.Types.ObjectId,ref:'User'},provider:{type:Schema.Types.ObjectId,ref:'User'},items:[{itemType:String,product:{type:Schema.Types.ObjectId,ref:'Product'},service:{type:Schema.Types.ObjectId,ref:'Service'},name:String,quantity:Number,price:Number}],totalAmount:Number,status:{type:String,enum:['pending','accepted','processing','completed','cancelled','rejected'],default:'pending'},payment:{method:{type:String,enum:['cod','upi','qr'],default:'cod'},status:{type:String,enum:['pending','paid','failed'],default:'pending'},transactionId:String},rejectionReason:String},{timestamps:true}));
+const SECRET=()=>process.env.JWT_SECRET||'bharat-sevak-dev-secret';const token=u=>jwt.sign({id:u._id.toString(),role:u.role,name:u.name},SECRET(),{expiresIn:'7d'});
+function auth(req,res,next){const h=req.headers.authorization||'';if(!h.startsWith('Bearer '))return res.status(401).json({message:'Authentication required'});try{req.user=jwt.verify(h.slice(7),SECRET());next()}catch{return res.status(401).json({message:'Invalid token'})}}function roles(...r){return(req,res,next)=>r.includes(req.user.role)?next():res.status(403).json({message:'Access denied'})}
+app.get('/api/health',(_,res)=>res.json({ok:true}));app.post('/api/auth/register',async(req,res)=>{try{const{ name,phone,email,password,role='customer',area,address,serviceTypes=[],productTypes=[],document}=req.body;if(!['customer','provider'].includes(role))return res.status(400).json({message:'Invalid role'});if(await User.findOne({phone}))return res.status(409).json({message:'Phone already registered'});const u=await User.create({name,phone,email,password:await bcrypt.hash(password,10),role,status:role==='provider'?'pending':'active',profile:{area,address,serviceTypes,productTypes,document}});res.status(201).json({message:role==='provider'?'Provider application submitted for admin verification':'Registration successful',user:{id:u._id,name:u.name,role:u.role,status:u.status}})}catch(e){res.status(400).json({message:e.message})}});
+app.post('/api/auth/login',async(req,res)=>{const u=await User.findOne({phone:req.body.phone});if(!u||!(await bcrypt.compare(req.body.password,u.password)))return res.status(401).json({message:'Invalid credentials'});if(u.role==='provider'&&u.status!=='approved')return res.status(403).json({message:'Provider account is '+u.status});res.json({token:token(u),user:{id:u._id,name:u.name,phone:u.phone,role:u.role,status:u.status}})});
+app.get('/api/categories',async(_,res)=>res.json(await Category.find({active:true}).sort({kind:1,name:1})));app.post('/api/categories',auth,roles('admin'),async(req,res)=>{try{res.status(201).json(await Category.create(req.body))}catch(e){res.status(400).json({message:e.message})}});app.patch('/api/categories/:id',auth,roles('admin'),async(req,res)=>res.json(await Category.findByIdAndUpdate(req.params.id,req.body,{new:true})));
+app.get('/api/products',async(req,res)=>{const q={status:'approved'};if(req.query.category)q.category=req.query.category;const x=await Product.find(q).populate('provider','name phone profile.area').populate('category','name');res.json(x)});app.post('/api/products',auth,roles('provider'),async(req,res)=>res.status(201).json(await Product.create({...req.body,provider:req.user.id,status:'pending'})));app.get('/api/products/mine',auth,roles('provider'),async(req,res)=>res.json(await Product.find({provider:req.user.id}).populate('category','name')));
+app.get('/api/services',async(req,res)=>{const q={status:'approved',available:true};if(req.query.category)q.category=req.query.category;res.json(await Service.find(q).populate('provider','name phone profile').populate('category','name'))});app.post('/api/services',auth,roles('provider'),async(req,res)=>res.status(201).json(await Service.create({...req.body,provider:req.user.id,status:'pending'})));app.get('/api/services/mine',auth,roles('provider'),async(req,res)=>res.json(await Service.find({provider:req.user.id}).populate('category','name')));
+app.post('/api/orders',auth,roles('customer'),async(req,res)=>{try{const{itemType,itemId,quantity=1,paymentMethod='cod'}=req.body;const M=itemType==='product'?Product:Service;const x=await M.findOne({_id:itemId,status:'approved'});if(!x)return res.status(404).json({message:'Item unavailable'});const price=itemType==='product'?x.price:x.rate;const name=itemType==='product'?x.name:x.title;const o=await Order.create({customer:req.user.id,provider:x.provider,items:[{itemType,[itemType]:x._id,name,quantity,price}],totalAmount:price*Number(quantity),payment:{method:paymentMethod}});res.status(201).json(await o.populate('provider','name phone'))}catch(e){res.status(400).json({message:e.message})}});
+app.get('/api/orders/mine',auth,async(req,res)=>{const q=req.user.role==='provider'?{provider:req.user.id}:{customer:req.user.id};res.json(await Order.find(q).populate('customer provider','name phone').sort('-createdAt'))});app.patch('/api/orders/:id/status',auth,roles('provider'),async(req,res)=>{const o=await Order.findOne({_id:req.params.id,provider:req.user.id});if(!o)return res.status(404).json({message:'Order not found'});o.status=req.body.status;if(req.body.status==='rejected')o.rejectionReason=req.body.rejectionReason||'Rejected by provider';if(req.body.status==='completed'&&o.payment.method==='cod')o.payment.status='paid';await o.save();res.json(o)});
+app.get('/api/provider/dashboard',auth,roles('provider'),async(req,res)=>{const id=req.user.id;const[products,services,orders,customers]=await Promise.all([Product.find({provider:id}).populate('category','name'),Service.find({provider:id}).populate('category','name'),Order.find({provider:id}).populate('customer','name phone').sort('-createdAt'),Order.distinct('customer',{provider:id})]);res.json({counts:{products:products.length,services:services.length,orders:orders.length,customers:customers.length},revenue:orders.filter(x=>x.status==='completed').reduce((s,x)=>s+x.totalAmount,0),products,services,orders})});
+app.get('/api/admin/dashboard',auth,roles('admin'),async(_,res)=>{const [customers,providers,products,services,orders,pendingProviders,pendingProducts,pendingServices]=await Promise.all([User.countDocuments({role:'customer'}),User.countDocuments({role:'provider'}),Product.countDocuments(),Service.countDocuments(),Order.countDocuments(),User.countDocuments({role:'provider',status:'pending'}),Product.countDocuments({status:'pending'}),Service.countDocuments({status:'pending'})]);res.json({customers,providers,products,services,orders,pendingProviders,pendingProducts,pendingServices})});
+app.get('/api/admin/providers',auth,roles('admin'),async(_,res)=>res.json(await User.find({role:'provider'}).select('-password').sort('-createdAt')));app.patch('/api/admin/providers/:id',auth,roles('admin'),async(req,res)=>res.json(await User.findOneAndUpdate({_id:req.params.id,role:'provider'},{status:req.body.status},{new:true}).select('-password')));
+app.get('/api/admin/products/pending',auth,roles('admin'),async(_,res)=>res.json(await Product.find({status:'pending'}).populate('provider','name phone').populate('category','name')));app.patch('/api/admin/products/:id',auth,roles('admin'),async(req,res)=>res.json(await Product.findByIdAndUpdate(req.params.id,req.body,{new:true})));
+app.get('/api/admin/services/pending',auth,roles('admin'),async(_,res)=>res.json(await Service.find({status:'pending'}).populate('provider','name phone').populate('category','name')));app.patch('/api/admin/services/:id',auth,roles('admin'),async(req,res)=>res.json(await Service.findByIdAndUpdate(req.params.id,req.body,{new:true})));
+app.get('/api/admin/customers',auth,roles('admin'),async(_,res)=>res.json(await User.find({role:'customer'}).select('-password').sort('-createdAt')));app.get('/api/admin/orders',auth,roles('admin'),async(_,res)=>res.json(await Order.find().populate('customer provider','name phone').sort('-createdAt')));
+app.get('/api/admin/providers/:id/network',auth,roles('admin'),async(req,res)=>{const id=req.params.id;const orders=await Order.find({provider:id}).populate('customer','name phone');const productOrders=await Order.find({customer:id}).populate('provider','name phone');res.json({customers:orders.map(o=>o.customer),businessesAsCustomer:productOrders.map(o=>o.provider),orders})});
+const PORT=process.env.PORT||5000;mongoose.connect(process.env.MONGO_URI||'mongodb://127.0.0.1:27017/bharat_sevak').then(()=>app.listen(PORT,()=>console.log('Bharat Sevak API on '+PORT))).catch(e=>{console.error(e);process.exit(1)});
