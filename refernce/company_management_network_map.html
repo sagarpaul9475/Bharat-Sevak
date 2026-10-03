@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Company Management Network</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Noto Sans Bengali",sans-serif;background:#f4f7fb;color:#172033}
+.app{display:flex;min-height:100vh}.side{width:285px;background:#111a2e;color:#fff;position:fixed;inset:0 auto 0 0;overflow:auto}.brand{padding:20px;border-bottom:1px solid #2c3851}.brand h2{margin:0}.brand small{color:#aeb8cb}
+.tree{padding:10px}.row{display:flex;gap:7px;align-items:center;padding:10px;border-radius:8px;color:#dce4f3;cursor:pointer}.row:hover,.row.active{background:#263454;color:#fff}.arrow{width:17px}.children{margin-left:17px;border-left:1px solid #34415c;padding-left:5px}
+.main{margin-left:285px;flex:1}.top{height:64px;background:#fff;border-bottom:1px solid #e1e5ee;display:flex;gap:10px;align-items:center;padding:10px 18px;position:sticky;top:0;z-index:5}.top input{flex:1;max-width:650px;padding:11px;border:1px solid #d9dfeb;border-radius:9px}.btn{border:0;border-radius:8px;padding:10px 13px;background:#edf1fb;color:#294aa8;cursor:pointer}.primary{background:#315efb;color:white}.danger{background:#fff0f1;color:#c62835}
+.content{padding:20px;max-width:1500px;margin:auto}.title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}.title h1{margin:0}.muted{color:#6b7280}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid #e0e5ef;border-radius:14px;padding:16px;box-shadow:0 7px 24px #2030500d}.stat b{font-size:28px;display:block;margin-top:5px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.modal{display:none;position:fixed;inset:0;background:#07112599;z-index:30;align-items:center;justify-content:center;padding:15px}.modal.open{display:flex}.box{background:#fff;width:min(1050px,100%);max-height:92vh;overflow:auto;border-radius:16px;padding:20px}.head{display:flex;justify-content:space-between;align-items:center}.close{border:0;border-radius:50%;width:34px;height:34px}.form{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field label{display:block;font-size:13px;font-weight:bold;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;padding:10px;border:1px solid #d9dfeb;border-radius:8px}.full{grid-column:1/-1}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px;border-bottom:1px solid #e7eaf0;text-align:left;white-space:nowrap}.table-wrap{overflow:auto}.empty{text-align:center;padding:35px;color:#6b7280}
+.map{background:#f8faff;border:1px solid #dde4f0;border-radius:15px;padding:15px;overflow:auto}.board{position:relative;min-width:1050px;min-height:610px;display:grid;grid-template-columns:310px 260px 310px;gap:45px;align-items:stretch;justify-content:center;padding:25px}.col{display:flex;flex-direction:column;justify-content:space-around;gap:15px}.node{background:#fff;border:1px solid #d9e0ec;border-radius:13px;padding:12px;box-shadow:0 8px 22px #20305012;z-index:2;cursor:pointer}.node:hover{border-color:#315efb}.node b{display:block}.node small{color:#6b7280}.subs{margin-top:8px;border-left:2px solid #cbd5e1;padding-left:9px;display:grid;gap:4px}.sub{font-size:11px;background:#f5f7fb;border:1px solid #e5e7eb;border-radius:6px;padding:4px}.center{display:flex;align-items:center;justify-content:center;z-index:3}.admin{width:220px;min-height:125px;background:#fff;border:3px solid #315efb;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 12px 35px #315efb22;text-align:center}.admin .big{font-size:36px}.svg{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}.legend{font-size:12px;color:#667085;margin-top:8px}
+@media(max-width:950px){.side{transform:translateX(-100%);transition:.2s}.side.open{transform:translateX(0)}.main{margin-left:0}.hamb{display:block}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid,.form{grid-template-columns:1fr}.content{padding:12px}.hamb{display:block}.title{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<aside class="side" id="side"><div class="brand"><h2>🏢 MY COMPANY</h2><small>Administrator Control Platform</small></div><div class="tree" id="tree"></div></aside>
+<main class="main">
+<header class="top"><button class="btn hamb" onclick="side.classList.toggle('open')">☰</button><input id="search" placeholder="🔎 Menu / customer / vendor / product search" oninput="searchMenu(this.value)"><button class="btn" onclick="menuManager()">⚙ Menu</button><button class="btn primary" onclick="addRecord('customers')">＋ Add</button></header>
+<section class="content" id="content"></section>
+</main>
+<div class="modal" id="modal"><div class="box" id="box"></div></div>
+
+<script>
+const seed=[
+{id:'dashboard',n:'Dashboard',i:'🏠',t:'dashboard',c:[]},
+{id:'admin',n:'Administrator',i:'👑',t:'folder',c:[
+{id:'users',n:'Users',i:'👥',t:'users',c:[]},{id:'roles',n:'Roles & Permission',i:'🔐',t:'users',c:[]},{id:'supervisor',n:'Supervisor',i:'🧑‍💼',t:'users',c:[]},
+{id:'approval',n:'Approval',i:'✅',t:'approval',c:[]},{id:'verification',n:'Verification',i:'🔎',t:'approval',c:[]},{id:'workflow',n:'Workflow',i:'🔄',t:'approval',c:[]}
+]},
+{id:'product',n:'Product',i:'📦',t:'folder',c:[
+{id:'food',n:'Food',i:'🍲',t:'products',c:[]},{id:'vegetable',n:'Vegetables',i:'🥦',t:'products',c:[]},{id:'grocery',n:'Grocery',i:'🛍️',t:'products',c:[]},
+{id:'cloth',n:'Cloth',i:'👕',t:'products',c:[]},{id:'other',n:'Other Product',i:'📌',t:'products',c:[]},{id:'price',n:'Product Price',i:'💰',t:'products',c:[]}
+]},
+{id:'service',n:'Service',i:'🛠️',t:'folder',c:[
+{id:'delivery',n:'Deliveryman',i:'🛵',t:'services',c:[]},{id:'tuition',n:'Tuition',i:'📚',t:'services',c:[]},{id:'electrician',n:'Electrician',i:'🔧',t:'services',c:[]},
+{id:'sweeper',n:'Sweeper',i:'🧹',t:'services',c:[]},{id:'servant',n:'Servant',i:'🧑‍🍳',t:'services',c:[]},{id:'otherservice',n:'Other Service',i:'➕',t:'services',c:[]}
+]},
+{id:'customer',n:'Customer',i:'🧑‍🤝‍🧑',t:'customers',c:[]},
+{id:'orders',n:'Orders',i:'🧾',t:'orders',c:[{id:'new',n:'New Order',i:'➕',t:'orders',c:[]},{id:'status',n:'Order Status',i:'📍',t:'orders',c:[]},{id:'cancel',n:'Cancellation / Rejection',i:'❌',t:'orders',c:[]}]},
+{id:'payment',n:'Payment',i:'💳',t:'payments',c:[{id:'qr',n:'QR / Online',i:'📲',t:'payments',c:[]},{id:'rule',n:'Payment Rule',i:'📜',t:'payments',c:[]}]},
+{id:'reports',n:'Reports',i:'📊',t:'reports',c:[{id:'sales',n:'Sales Report',i:'📈',t:'reports',c:[]},{id:'vendorreport',n:'Vendor Report',i:'🚚',t:'reports',c:[]},{id:'payreport',n:'Payment Report',i:'💵',t:'reports',c:[]}]}
+];
+let menus=JSON.parse(localStorage.companyMenus||'null')||seed;
+let db=JSON.parse(localStorage.companyDB||'null')||{customers:[],vendors:[],products:[],services:[],orders:[],payments:[],users:[],approval:[]};
+
+const save=()=>{localStorage.companyMenus=JSON.stringify(menus);localStorage.companyDB=JSON.stringify(db)};
+const esc=x=>String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function find(id,a=menus){for(const x of a){if(x.id===id)return x;const y=find(id,x.c);if(y)return y}}
+function menuTree(a,host,level=0){
+ a.forEach(m=>{let w=document.createElement('div'),r=document.createElement('div');r.className='row';r.dataset.id=m.id;r.innerHTML=`<span class="arrow">${m.c.length?'▶':''}</span><span>${m.i}</span><span style="flex:1">${esc(m.n)}</span>`;r.onclick=()=>open(m);
+ w.appendChild(r);if(m.c.length){let ch=document.createElement('div');ch.className='children';ch.style.display='none';menuTree(m.c,ch,level+1);w.appendChild(ch);r.querySelector('.arrow').onclick=e=>{e.stopPropagation();ch.style.display=ch.style.display==='none'?'block':'none';r.querySelector('.arrow').textContent=ch.style.display==='none'?'▶':'▼'} }host.appendChild(w)})
+}
+function renderTree(){tree.innerHTML='';menuTree(menus,tree)}
+function open(m){document.querySelectorAll('.row').forEach(x=>x.classList.toggle('active',x.dataset.id===m.id));if(m.t==='dashboard')dashboard();else if(m.t==='folder')folder(m);else module(m)}
+function dashboard(){
+content.innerHTML=`<div class="title"><div><h1>Business Dashboard</h1><p class="muted">Administrator মাঝখানে রেখে সব বিভাগকে connected management network হিসেবে পরিচালনা করুন।</p></div><div class="actions"><button class="btn primary" onclick="showMap('admin')">🔗 Administrator Map</button><button class="btn" onclick="menuManager()">⚙ Manage Menu</button></div></div>
+<div class="grid">${stat('Customers','customers','🧑‍🤝‍🧑')}${stat('Products','products','📦')}${stat('Services','services','🛠️')}${stat('Orders','orders','🧾')}</div>
+<div class="card" style="margin-top:16px"><h3>Quick Management</h3><div class="actions"><button class="btn primary" onclick="addRecord('customers')">＋ Customer</button><button class="btn" onclick="addRecord('products')">＋ Product</button><button class="btn" onclick="addRecord('services')">＋ Service</button><button class="btn" onclick="addRecord('orders')">＋ Order</button><button class="btn" onclick="addRecord('payments')">＋ Payment</button></div></div>`;
+}
+function stat(n,k,i){return `<div class="card stat">${i} ${n}<b>${db[k]?.length||0}</b><span class="muted">Total</span></div>`}
+function folder(m){content.innerHTML=`<div class="title"><div><h1>${m.i} ${esc(m.n)}</h1><p class="muted">এই মেনুর সব branch ও sub-menu</p></div><div class="actions"><button class="btn primary" onclick="showMap('${m.id}')">🔗 Structure Map</button><button class="btn" onclick="menuManager()">＋ Add Sub-menu</button></div></div><div class="grid">${m.c.map(x=>`<button class="card" style="text-align:left" onclick="open(find('${x.id}'))"><div style="font-size:27px">${x.i}</div><h3>${esc(x.n)}</h3><span class="muted">${x.c.length} sub-menu</span></button>`).join('')}</div>`}
+function module(m){let k=m.t==='users'?'users':m.t==='products'?'products':m.t==='services'?'services':m.t==='orders'?'orders':m.t==='payments'?'payments':m.t==='customers'?'customers':'approval';content.innerHTML=`<div class="title"><div><h1>${m.i} ${esc(m.n)}</h1><p class="muted">এই menu-র record ও workflow পরিচালনা করুন।</p></div><div class="actions"><button class="btn" onclick="showMap('${m.id}')">🔗 Map</button><button class="btn primary" onclick="addRecord('${k}')">＋ Add</button></div></div><div class="card"><div class="table-wrap">${table(k)}</div></div>`}
+function table(k){let a=db[k]||[];if(!a.length)return `<div class="empty">কোনো record নেই — ＋ Add দিয়ে শুরু করুন।</div>`;let cols=k==='customers'?['Name','Phone','Area','Status']:k==='products'?['Name','Type','Price','Vendor','Status']:k==='services'?['Name','Service','Phone','Rate','Status']:k==='orders'?['Order ID','Customer','Item','Amount','Status']:k==='payments'?['Txn','Customer','Amount','Method','Status']:['Name','Phone','Role','Status'];return `<table class="table"><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th>Action</th></tr>${a.map((r,i)=>`<tr>${(k==='customers'?[r.name,r.phone,r.area,r.status]:k==='products'?[r.name,r.type,'₹'+r.price,r.vendor,r.status]:k==='services'?[r.name,r.service,r.phone,'₹'+r.rate,r.status]:k==='orders'?[r.id,r.customer,r.item,'₹'+r.amount,r.status]:k==='payments'?[r.id,r.customer,'₹'+r.amount,r.method,r.status]:[r.name,r.phone,r.role,r.status]).map(v=>`<td>${esc(v)}</td>`).join('')}<td><button class="btn danger" onclick="del('${k}',${i})">Delete</button></td></tr>`).join('')}</table>`}
+function addRecord(k){let fields=k==='customers'?[['name','Name'],['phone','Phone'],['area','Area'],['status','Status']]:k==='products'?[['name','Product'],['type','Type'],['price','Price'],['vendor','Vendor'],['status','Status']]:k==='services'?[['name','Provider'],['service','Service'],['phone','Phone'],['rate','Rate'],['status','Status']]:k==='orders'?[['id','Order ID'],['customer','Customer'],['item','Product / Service'],['amount','Amount'],['status','Status']]:k==='payments'?[['id','Transaction ID'],['customer','Customer'],['amount','Amount'],['method','Method'],['status','Status']]:[['name','Name'],['phone','Phone'],['role','Role'],['status','Status']];box.innerHTML=`<div class="head"><h2>Add ${k}</h2><button class="close" onclick="closeM()">×</button></div><form class="form" onsubmit="saveRecord(event,'${k}')">${fields.map(([n,l])=>`<div class="field"><label>${l}</label><input name="${n}" required></div>`).join('')}<div class="full actions"><button class="btn" type="button" onclick="closeM()">Cancel</button><button class="btn primary">Save</button></div></form>`;modal.classList.add('open')}
+function saveRecord(e,k){e.preventDefault();db[k].push(Object.fromEntries(new FormData(e.target)));save();closeM();dashboard();alert('Saved successfully')}
+function del(k,i){if(confirm('Delete this record?')){db[k].splice(i,1);save();dashboard()}}
+function menuManager(){
+box.innerHTML=`<div class="head"><h2>⚙ Unlimited Menu Manager</h2><button class="close" onclick="closeM()">×</button></div><p class="muted">Main Menu → Sub Menu → Sub-sub Menu যত স্তর দরকার তৈরি করুন।</p>
+<div class="form"><div class="field"><label>Menu name</label><input id="mn" placeholder="যেমন Health / Event / Vendor"></div><div class="field"><label>Icon</label><input id="mi" value="📁"></div><div class="field full"><label>Parent</label><select id="mp"><option value="">Main Menu</option>${opts(menus)}</select></div></div><div class="actions" style="margin-top:12px"><button class="btn primary" onclick="addMenu()">＋ Add Menu</button></div><hr><h3>Current Menu Tree</h3>${manageTree(menus)}`;modal.classList.add('open')}
+function opts(a,p=''){return a.map(x=>`<option value="${x.id}">${p}${esc(x.n)}</option>${opts(x.c,p+'— ')}`).join('')}
+function manageTree(a,l=0){return a.map(x=>`<div style="margin-left:${l*18}px;padding:8px;border-bottom:1px solid #e6e9ef">${x.i} <b>${esc(x.n)}</b> <button class="btn" style="float:right;padding:5px 8px" onclick="showMap('${x.id}')">Map</button>${x.c.length?manageTree(x.c,l+1):''}</div>`).join('')}
+function addMenu(){let n=document.getElementById('mn').value.trim();if(!n)return alert('Menu name দিন');let x={id:'m'+Date.now(),n,i:document.getElementById('mi').value||'📁',t:'folder',c:[]},p=document.getElementById('mp').value;if(p)find(p).c.push(x);else menus.push(x);save();renderTree();menuManager()}
+function showMap(id){
+let root=find(id),a=root.c||[],L=a.slice(0,3),R=a.slice(3,6),more=a.slice(6);
+const node=x=>`<div class="node" onclick="open(find('${x.id}'))"><b>${x.i} ${esc(x.n)}</b><small>${x.c.length} sub-menu • click to open</small>${x.c.slice(0,3).map(y=>`<div class="subs"><div class="sub">↳ ${y.i} ${esc(y.n)}</div></div>`).join('')}</div>`;
+box.innerHTML=`<div class="head"><h2>🔗 ${root.i} ${esc(root.n)} — Management Map</h2><button class="close" onclick="closeM()">×</button></div>
+<p class="muted">আপনার চাওয়া layout: মাঝখানে Administrator/মূল menu → বাম পাশে ৩টি → ডান পাশে ৩টি। প্রতিটি node আবার নিজের sub-menu দিয়ে পরের level পরিচালনা করবে।</p>
+<div class="map"><div class="board"><svg class="svg" viewBox="0 0 1000 610" preserveAspectRatio="none"><defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0L7 3.5L0 7z" fill="#9aa7bd"/></marker></defs>
+<path d="M500 305C390 110 340 90 210 90" fill="none" stroke="#9aa7bd" stroke-width="2" marker-end="url(#a)"/><path d="M500 305C390 250 340 285 210 305" fill="none" stroke="#9aa7bd" stroke-width="2" marker-end="url(#a)"/><path d="M500 305C390 500 340 520 210 520" fill="none" stroke="#9aa7bd" stroke-width="2" marker-end="url(#a)"/>
+<path d="M500 305C610 110 660 90 790 90" fill="none" stroke="#9aa7bd" stroke-width="2" marker-end="url(#a)"/><path d="M500 305C610 250 660 285 790 305" fill="none" stroke="#9aa7bd" stroke-width="2" marker-end="url(#a)"/><path d="M500 305C610 500 660 520 790 520" fill="none" stroke="#9aa7bd" stroke-width="2" marker-end="url(#a)"/></svg>
+<div class="col">${L.map(node).join('')||'<div class="empty">No left node</div>'}</div><div class="center"><div class="admin"><div class="big">👑</div><b>${esc(root.n)}</b><span class="muted">Administrator / Central Control</span><small>${a.length} direct menus</small></div></div><div class="col">${R.map(node).join('')||'<div class="empty">No right node</div>'}</div></div>
+<div class="legend">↔ সব connection clickable • প্রতিটি branch-এ আবার unlimited sub-menu রাখা যাবে • ৬টির বেশি direct menu নিচে দেখানো হচ্ছে</div>
+${more.length?`<h3>More Direct Nodes</h3><div class="grid">${more.map(x=>`<button class="card" style="text-align:left" onclick="open(find('${x.id}'))">${x.i} <b>${esc(x.n)}</b><br><span class="muted">${x.c.length} sub-menu</span></button>`).join('')}</div>`:''}</div>`;
+modal.classList.add('open')}
+function closeM(){modal.classList.remove('open')}
+modal.onclick=e=>{if(e.target===modal)closeM()}
+function searchMenu(q){q=q.toLowerCase();document.querySelectorAll('.row').forEach(r=>r.style.display=!q||r.innerText.toLowerCase().includes(q)?'flex':'none')}
+renderTree();dashboard();
+</script>
+</body></html>

@@ -4,10 +4,59 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EqualWork — সমান কাজ, সমান বেতন</title>
+    <title>Bharat Sevak — भारत सेवक</title>
+    <meta name="description" content="Bharat Sevak — India's local marketplace connecting daily-income workers with customers." />
+
+    <!-- Google Translate -->
+    <meta name="google" content="notranslate" id="gtNoAutoTranslate" />
+    <style>
+      /* Google Translate Widget Styling */
+      #google_translate_element {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        z-index: 9999;
+        background: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 6px 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      }
+      .goog-te-gadget-simple {
+        background: transparent !important;
+        border: none !important;
+        font-size: 13px !important;
+        color: #F8FAFC !important;
+        padding: 0 !important;
+      }
+      .goog-te-gadget-simple .goog-te-menu-value span {
+        color: #F8FAFC !important;
+      }
+      .goog-te-gadget-simple img { display: none; }
+      .goog-te-gadget-simple .goog-te-menu-value:before {
+        content: "🌐 ";
+      }
+      .goog-te-banner-frame { display: none !important; }
+      body { top: 0 !important; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="google_translate_element"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement(
+          {
+            pageLanguage: 'en',
+            includedLanguages: 'hi,bn,te,mr,ta,gu,kn,ml,pa,ur,or,as,en',
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false,
+          },
+          'google_translate_element'
+        );
+      }
+    </script>
+    <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
   </body>
 </html>
