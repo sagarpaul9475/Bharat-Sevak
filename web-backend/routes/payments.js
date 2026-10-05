@@ -2,12 +2,83 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const Order = require('../models/Order');
+const User = require('../models/User');
 const { verifyToken } = require('../middleware/auth');
 
 const getCredentials = () => ({
   keyId: process.env.RAZORPAY_KEY_ID,
   keySecret: process.env.RAZORPAY_KEY_SECRET,
 });
+
+// Commission is a configurable proposal, not a hard-coded business commitment.
+const getCommissionPercent = () => {
+  const value = Number(process.env.PLATFORM_COMMISSION_PERCENT ?? 1);
+  return Number.isFinite(value) && value >= 0 && value <= 100 ? value : 1;
+};
+
+// No Route transfers happen unless explicitly enabled. Live transfers require a second
+// explicit opt-in so adding API keys alone can never move provider funds.
+const routeTransfersEnabled = (keyId) =>
+  process.env.RAZORPAY_ROUTE_TRANSFERS_ENABLED === 'true' &&
+  (keyId?.startsWith('rzp_test_') || process.env.RAZORPAY_ROUTE_LIVE_TRANSFERS_ENABLED === 'true');
+
+const razorpayAuth = (keyId, keySecret) =>
+  'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+
+async function createProviderTransfer({ keyId, keySecret, order, provider }) {
+  const commissionPercent = getCommissionPercent();
+  const grossPaise = Math.round(Number(order.totalAmount) * 100);
+  const commissionPaise = Math.round(grossPaise * commissionPercent / 100);
+  const providerPaise = grossPaise - commissionPaise;
+
+  order.platformCommissionPercent = commissionPercent;
+  order.platformCommissionAmount = commissionPaise / 100;
+  order.providerTransferAmount = providerPaise / 100;
+
+  if (!provider?.razorpayRouteAccountId || provider.razorpayRouteStatus !== 'active') {
+    order.providerPayoutStatus = 'pending_onboarding';
+    return;
+  }
+
+  if (!routeTransfersEnabled(keyId)) {
+    order.providerPayoutStatus = 'pending_configuration';
+    return;
+  }
+
+  if (providerPaise <= 0) {
+    order.providerPayoutStatus = 'failed';
+    return;
+  }
+
+  const response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(order.gatewayPaymentId)}/transfers`, {
+    method: 'POST',
+    headers: {
+      Authorization: razorpayAuth(keyId, keySecret),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      transfers: [{
+        account: provider.razorpayRouteAccountId,
+        amount: providerPaise,
+        currency: 'INR',
+        notes: {
+          bharatSevakOrderId: String(order._id),
+          orderNumber: String(order.orderId),
+          platformCommissionPercent: String(commissionPercent),
+        },
+      }],
+    }),
+  });
+  const transferResult = await response.json();
+  const transfer = Array.isArray(transferResult.items) ? transferResult.items[0] : null;
+  if (!response.ok || !transfer?.id) {
+    order.providerPayoutStatus = 'failed';
+    // Keep the customer payment marked paid; payout can be reconciled/retried separately.
+    return;
+  }
+  order.razorpayTransferId = transfer.id;
+  order.providerPayoutStatus = 'transferred';
+}
 
 router.post('/orders/:id/create', verifyToken, async (req, res) => {
   try {
@@ -126,8 +197,26 @@ router.post('/orders/:id/verify', verifyToken, async (req, res) => {
     order.paymentMethod = 'online';
     order.gatewayPaymentId = razorpay_payment_id;
     order.txnId = razorpay_payment_id;
+
+    // Payment is verified before any provider transfer is considered. Transfers are
+    // disabled by default and live transfers require a separate explicit environment flag.
+    const provider = await User.findById(order.provider).select('razorpayRouteAccountId razorpayRouteStatus');
+    try {
+      await createProviderTransfer({ keyId, keySecret, order, provider });
+    } catch (transferError) {
+      order.providerPayoutStatus = 'failed';
+    }
     await order.save();
-    res.json({ message: 'Payment verified successfully', order });
+    res.json({
+      message: 'Payment verified successfully',
+      order,
+      payout: {
+        status: order.providerPayoutStatus,
+        transferId: order.razorpayTransferId || undefined,
+        commissionPercent: order.platformCommissionPercent,
+        providerTransferAmount: order.providerTransferAmount,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: 'Could not verify payment. If money was deducted, contact support before retrying.' });
   }
