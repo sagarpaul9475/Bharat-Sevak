@@ -73,9 +73,17 @@ router.get('/approvals/providers', adminGuard, async (req, res) => {
 
 router.put('/approvals/providers/:id/approve', adminGuard, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { status: 'approved', isVerified: true }, { new: true }).select('-password');
+    const user = await User.findById(req.params.id);
+    if (!user || user.role !== 'provider') return res.status(404).json({ message: 'Provider not found' });
+    if (!user.kycDocs?.length || !user.businessDocs?.length) {
+      return res.status(400).json({ message: 'Provider must submit both identity/KYC and business verification documents before approval' });
+    }
+    user.status = 'approved';
+    user.isVerified = true;
+    await user.save();
+    user.password = undefined;
     res.json({ message: 'Provider approved', user });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { res.status(500).json({ message: 'Could not approve provider' }); }
 });
 
 router.put('/approvals/providers/:id/reject', adminGuard, async (req, res) => {
