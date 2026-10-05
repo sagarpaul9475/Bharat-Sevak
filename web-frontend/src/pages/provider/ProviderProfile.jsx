@@ -302,7 +302,7 @@ export default function ProviderProfile() {
             }}>
               <div className="font-bold">{isVerified ? '✅ Verified provider' : '⏳ Verification pending'}</div>
               <p className="text-sm mt-1">
-                {user?.isVerified
+                {isVerified
                   ? 'Your provider account is marked as verified.'
                   : 'Upload your identity and business proof. The admin team must review your documents before verification.'}
               </p>
