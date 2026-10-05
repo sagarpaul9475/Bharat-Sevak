@@ -97,6 +97,12 @@ export const adminAPI = {
   getProviderReport: () => API.get('/admin/reports/providers'),
 };
 
+// Online payments (Razorpay)
+export const paymentAPI = {
+  createOrder: (orderId) => API.post(`/payments/orders/${orderId}/create`),
+  verifyOrder: (orderId, data) => API.post(`/payments/orders/${orderId}/verify`, data),
+};
+
 // Complaints / Grievance
 export const complaintsAPI = {
   file: (data) => API.post('/complaints', data),
