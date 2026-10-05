@@ -39,7 +39,7 @@ export default function AdminApprovals() {
   };
 
   const approveProvider = async (id) => {
-    try { await adminAPI.approveProvider(id); toast.success('Provider approved'); load(); } catch { toast.error('Failed'); }
+    try { await adminAPI.approveProvider(id); toast.success('Provider approved'); load(); } catch (error) { toast.error(error.response?.data?.message || 'Could not approve provider'); }
   };
   const rejectProvider = async (id) => {
     try { await adminAPI.rejectProvider(id); toast.success('Provider rejected'); load(); } catch { toast.error('Failed'); }
