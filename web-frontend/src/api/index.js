@@ -113,8 +113,9 @@ export const complaintsAPI = {
 
 // Uploads
 export const uploadAPI = {
-  uploadKyc: (formData) => API.post('/upload/kyc', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  uploadBusiness: (formData) => API.post('/upload/business', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadKyc: (formData) => API.post('/upload/kyc', formData),
+  uploadBusiness: (formData) => API.post('/upload/business', formData),
+  downloadDocument: (userId, category, filename) => API.get(`/upload/document/${userId}/${category}/${encodeURIComponent(filename)}`, { responseType: 'blob' }),
   deleteKyc: (filename) => API.delete(`/upload/kyc/${filename}`),
   deleteBusiness: (filename) => API.delete(`/upload/business/${filename}`),
   myDocs: () => API.get('/upload/my-docs'),
