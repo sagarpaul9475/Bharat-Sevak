@@ -41,6 +41,41 @@ export default function ProviderDashboard() {
         ))}
       </div>
 
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="flex items-center justify-between" style={{ gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ fontSize: 18, marginBottom: 6 }}>💳 Provider payouts</h2>
+            <p className="text-sm text-muted">
+              Razorpay Route onboarding: {data?.routePayouts?.status || 'not_started'}.
+              {' '}Your linked account must be approved and configured before automatic transfers can be enabled.
+            </p>
+            {!data?.routePayouts?.linkedAccountConfigured && (
+              <p className="text-xs text-muted" style={{ marginTop: 6 }}>
+                No linked account is configured yet. Contact Bharat Sevak support after completing the approved provider onboarding process.
+              </p>
+            )}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div className="stat-value" style={{ color: 'var(--saffron)' }}>
+              ₹{(data?.routePayouts?.summary || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toFixed(2)}
+            </div>
+            <div className="stat-label">Estimated provider share on paid orders</div>
+          </div>
+        </div>
+        {(data?.routePayouts?.summary || []).length > 0 && (
+          <div className="flex flex-wrap gap-2" style={{ marginTop: 12 }}>
+            {data.routePayouts.summary.map(item => (
+              <span key={item._id || 'unknown'} className="badge badge-info">
+                {String(item._id || 'unassigned').replaceAll('_', ' ')}: {item.orders} order(s)
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-muted" style={{ marginTop: 10 }}>
+          Payout figures are estimates until Razorpay confirms the transfer and settlement. Platform commission is currently a configurable proposal, not a final fee.
+        </p>
+      </div>
+
       <div className="grid-3" style={{ marginBottom: 24 }}>
         <Link to="/provider/products" className="card" style={{ textDecoration: 'none', display: 'block' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>

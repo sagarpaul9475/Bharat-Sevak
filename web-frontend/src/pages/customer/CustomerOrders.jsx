@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { customerAPI } from '../../api';
+import { customerAPI, paymentAPI } from '../../api';
 import toast from 'react-hot-toast';
 
 export default function CustomerOrders() {
@@ -15,6 +15,46 @@ export default function CustomerOrders() {
   const cancelOrder = async (id) => {
     if (!confirm('Cancel this order?')) return;
     try { await customerAPI.cancelOrder(id); toast.success('Order cancelled'); load(); } catch { toast.error('Failed to cancel'); }
+  };
+
+  const payNow = async (order) => {
+    try {
+      const { data: paymentOrder } = await paymentAPI.createOrder(order._id);
+      if (!window.Razorpay) {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Could not load the payment window. Check your internet connection.'));
+        });
+      }
+      const checkout = new window.Razorpay({
+        key: paymentOrder.keyId,
+        amount: paymentOrder.amount,
+        currency: paymentOrder.currency,
+        name: 'Bharat Sevak',
+        description: `Payment for ${order.orderId}`,
+        order_id: paymentOrder.gatewayOrderId,
+        handler: async (response) => {
+          try {
+            await paymentAPI.verifyOrder(order._id, response);
+            toast.success('Payment verified successfully!');
+          } catch (error) {
+            toast.error(error.response?.data?.message || 'Payment verification is pending. Contact support before retrying.');
+          } finally {
+            load();
+          }
+        },
+        modal: { ondismiss: () => toast('Payment window closed. You can retry when ready.') },
+        theme: { color: '#F59E0B' }
+      });
+      checkout.on('payment.failed', (response) => toast.error(response.error?.description || 'Payment failed'));
+      checkout.open();
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Could not start payment');
+    }
   };
 
   const getStatusColor = (s) => {
@@ -82,9 +122,14 @@ export default function CustomerOrders() {
                 <div className="text-sm">
                   <span className="font-bold text-muted uppercase mr-2">Delivery To:</span> {o.deliveryAddress || 'Default Address'}
                 </div>
-                {(o.status === 'pending' || o.status === 'confirmed') && (
-                  <button className="btn btn-danger btn-sm" onClick={() => cancelOrder(o._id)}>Cancel Order</button>
-                )}
+                <div className="flex items-center gap-2">
+                  {o.paymentMethod === 'online' && o.paymentStatus !== 'paid' && !['cancelled', 'rejected'].includes(o.status) && (
+                    <button className="btn btn-primary btn-sm" onClick={() => payNow(o)}>Pay now</button>
+                  )}
+                  {(o.status === 'pending' || o.status === 'confirmed') && (
+                    <button className="btn btn-danger btn-sm" onClick={() => cancelOrder(o._id)}>Cancel Order</button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

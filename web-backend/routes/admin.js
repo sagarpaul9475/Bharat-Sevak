@@ -73,9 +73,17 @@ router.get('/approvals/providers', adminGuard, async (req, res) => {
 
 router.put('/approvals/providers/:id/approve', adminGuard, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { status: 'approved', isVerified: true }, { new: true }).select('-password');
+    const user = await User.findById(req.params.id);
+    if (!user || user.role !== 'provider') return res.status(404).json({ message: 'Provider not found' });
+    if (!user.kycDocs?.length || !user.businessDocs?.length) {
+      return res.status(400).json({ message: 'Provider must submit both identity/KYC and business verification documents before approval' });
+    }
+    user.status = 'approved';
+    user.isVerified = true;
+    await user.save();
+    user.password = undefined;
     res.json({ message: 'Provider approved', user });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { res.status(500).json({ message: 'Could not approve provider' }); }
 });
 
 router.put('/approvals/providers/:id/reject', adminGuard, async (req, res) => {
@@ -83,6 +91,34 @@ router.put('/approvals/providers/:id/reject', adminGuard, async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true }).select('-password');
     res.json({ message: 'Provider rejected', user });
   } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── Razorpay Route provider onboarding ───────────────────────
+// Admin must copy the linked account ID from the approved Razorpay Route dashboard.
+// This endpoint does not create linked accounts or move money.
+router.put('/providers/:id/razorpay-route', adminGuard, async (req, res) => {
+  try {
+    const { linkedAccountId, routeStatus } = req.body;
+    const allowedStatuses = ['not_started', 'pending', 'active', 'restricted'];
+    if (routeStatus !== undefined && !allowedStatuses.includes(routeStatus)) {
+      return res.status(400).json({ message: 'Invalid Route onboarding status' });
+    }
+    if (linkedAccountId !== undefined && typeof linkedAccountId !== 'string') {
+      return res.status(400).json({ message: 'Linked account ID must be a string' });
+    }
+    const update = {};
+    if (linkedAccountId !== undefined) update.razorpayRouteAccountId = linkedAccountId.trim();
+    if (routeStatus !== undefined) update.razorpayRouteStatus = routeStatus;
+    const provider = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'provider' },
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select('name businessName razorpayRouteAccountId razorpayRouteStatus');
+    if (!provider) return res.status(404).json({ message: 'Provider not found' });
+    res.json({ message: 'Provider Route settings updated', provider });
+  } catch (error) {
+    res.status(500).json({ message: 'Could not update provider Route settings' });
+  }
 });
 
 // ── Product Approvals ────────────────────────────────────────

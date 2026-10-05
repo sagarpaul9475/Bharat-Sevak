@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { adminAPI } from '../../api';
+import { Fragment, useEffect, useState } from 'react';
+import { adminAPI, uploadAPI } from '../../api';
 import toast from 'react-hot-toast';
 
 export default function AdminApprovals() {
@@ -19,8 +19,27 @@ export default function AdminApprovals() {
 
   useEffect(() => { load(); }, []);
 
+  const openDocument = async (providerId, category, doc) => {
+    try {
+      const response = await uploadAPI.downloadDocument(providerId, category, doc.filename);
+      const url = URL.createObjectURL(response.data);
+      const opened = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = doc.originalName || doc.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not open document. It may need to be uploaded again.');
+    }
+  };
+
   const approveProvider = async (id) => {
-    try { await adminAPI.approveProvider(id); toast.success('Provider approved'); load(); } catch { toast.error('Failed'); }
+    try { await adminAPI.approveProvider(id); toast.success('Provider approved'); load(); } catch (error) { toast.error(error.response?.data?.message || 'Could not approve provider'); }
   };
   const rejectProvider = async (id) => {
     try { await adminAPI.rejectProvider(id); toast.success('Provider rejected'); load(); } catch { toast.error('Failed'); }
@@ -70,7 +89,8 @@ export default function AdminApprovals() {
                 <thead><tr><th>Name</th><th>Business</th><th>Type</th><th>Phone</th><th>Region</th><th>Registered</th><th>Actions</th></tr></thead>
                 <tbody>
                   {providers.map(p => (
-                    <tr key={p._id}>
+                    <Fragment key={p._id}>
+                    <tr>
                       <td><div style={{ fontWeight: 600 }}>{p.name}</div><div className="text-sm text-muted">{p.email}</div></td>
                       <td>{p.businessName || '—'}</td>
                       <td><span className="badge badge-info">{p.providerType}</span></td>
@@ -84,6 +104,37 @@ export default function AdminApprovals() {
                         </div>
                       </td>
                     </tr>
+                    <tr key={`${p._id}-documents`}>
+                      <td colSpan={7}>
+                        <div className="grid-2" style={{ gap: 16, padding: '8px 0' }}>
+                          <div>
+                            <div className="font-bold mb-2">Identity / KYC documents</div>
+                            {p.kycDocs?.length ? (
+                              <div className="flex flex-wrap gap-2">
+                                {p.kycDocs.map((doc) => (
+                                  <button key={doc._id || doc.filename} className="btn btn-secondary btn-sm" onClick={() => openDocument(p._id, 'kyc', doc)}>
+                                    📄 {doc.originalName || doc.docType || 'Identity document'}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : <span className="text-sm text-muted">No identity document submitted</span>}
+                          </div>
+                          <div>
+                            <div className="font-bold mb-2">Business verification documents</div>
+                            {p.businessDocs?.length ? (
+                              <div className="flex flex-wrap gap-2">
+                                {p.businessDocs.map((doc) => (
+                                  <button key={doc._id || doc.filename} className="btn btn-secondary btn-sm" onClick={() => openDocument(p._id, 'business', doc)}>
+                                    🏪 {doc.originalName || doc.docType || 'Business proof'}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : <span className="text-sm text-muted">No business proof submitted</span>}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

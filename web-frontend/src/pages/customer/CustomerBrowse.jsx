@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { customerAPI } from '../../api';
+import { customerAPI, paymentAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -63,20 +63,78 @@ export default function CustomerBrowse() {
     toast.success('Item removed from cart');
   };
 
-  const placeOrder = async () => {
+  const startOnlinePayment = async (orderId) => {
+    try {
+      const { data: paymentOrder } = await paymentAPI.createOrder(orderId);
+      if (!window.Razorpay) {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Could not load the payment window. Check your internet connection.'));
+        });
+      }
+
+      const checkout = new window.Razorpay({
+        key: paymentOrder.keyId,
+        amount: paymentOrder.amount,
+        currency: paymentOrder.currency,
+        name: 'Bharat Sevak',
+        description: 'Order payment',
+        order_id: paymentOrder.gatewayOrderId,
+        handler: async (response) => {
+          try {
+            await paymentAPI.verifyOrder(orderId, response);
+            toast.success('Payment verified successfully!');
+          } catch (error) {
+            toast.error(error.response?.data?.message || 'Payment verification is pending. Check My Orders before paying again.');
+          } finally {
+            navigate('/orders');
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            toast('Your order is saved. You can retry payment from My Orders.');
+            navigate('/orders');
+          }
+        },
+        theme: { color: '#F59E0B' }
+      });
+      checkout.on('payment.failed', (response) => {
+        toast.error(response.error?.description || 'Payment failed. You can retry from My Orders.');
+      });
+      checkout.open();
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Could not start online payment');
+      navigate('/orders');
+    }
+  };
+
+  const placeOrder = async (paymentMethod = 'cash') => {
     if (cart.length === 0) return;
     setPlacingOrder(true);
     try {
-      await customerAPI.placeOrder({
-        items: cart,
-        paymentMethod: 'cash',
-        deliveryAddress: user.address || 'My Default Address' // would ideally be a form
+      const { data: order } = await customerAPI.placeOrder({
+        items: cart.map(({ itemType, item, quantity }) => ({ itemType, item, quantity })),
+        paymentMethod,
+        deliveryAddress: user.address || 'My Default Address'
       });
-      toast.success('Order placed successfully!');
       setCart([]);
       setShowCart(false);
-      navigate('/orders');
-    } catch { toast.error('Failed to place order'); } finally { setPlacingOrder(false); }
+      if (paymentMethod === 'online') {
+        toast.success('Order created. Complete payment in the secure checkout.');
+        await startOnlinePayment(order._id);
+      } else {
+        toast.success('Order placed successfully!');
+        navigate('/orders');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to place order');
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   const cartTotal = cart.reduce((sum, i) => sum + (i.itemPrice * i.quantity), 0);
@@ -178,8 +236,11 @@ export default function CustomerBrowse() {
             {cart.length > 0 && (
               <div style={{ borderTop: '1px solid var(--navy-border)', paddingTop: 16, marginTop: 16 }}>
                 <div className="flex justify-between items-center mb-4"><span className="font-bold">Total:</span><span className="font-bold text-xl text-saffron">₹{cartTotal}</span></div>
-                <div className="text-xs text-muted mb-3">Payment: Cash on Delivery / UPI QR on delivery</div>
-                <button className="btn btn-success w-full justify-center py-3 text-lg" onClick={placeOrder} disabled={placingOrder}>{placingOrder ? '⏳ Processing...' : 'Place Order'}</button>
+                <div className="text-xs text-muted mb-3">Choose cash on delivery or pay securely online by UPI, card, or net banking.</div>
+                <div className="flex flex-col gap-2">
+                  <button className="btn btn-success w-full justify-center py-3 text-lg" onClick={() => placeOrder('cash')} disabled={placingOrder}>{placingOrder ? '⏳ Processing...' : 'Place Order · Cash'}</button>
+                  <button className="btn btn-primary w-full justify-center py-3 text-lg" onClick={() => placeOrder('online')} disabled={placingOrder}>{placingOrder ? '⏳ Processing...' : 'Pay Online'}</button>
+                </div>
               </div>
             )}
           </div>

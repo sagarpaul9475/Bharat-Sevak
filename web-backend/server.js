@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigins = [process.env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174'];
+const allowedOrigins = [process.env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174'].filter(Boolean);
 const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'] }
 });
@@ -24,11 +24,10 @@ app.use('/api/provider', require('./routes/provider'));
 app.use('/api/customer', require('./routes/customer'));
 app.use('/api/complaints', require('./routes/complaints'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/payments', require('./routes/payments'));
 
-// Serve uploaded files statically
-const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
+// Do not serve uploads as static files: identity and business documents must
+// only be accessible through the authenticated /api/upload/document endpoint.
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
@@ -41,7 +40,7 @@ io.on('connection', (socket) => {
   });
   socket.on('disconnect', () => console.log('Socket disconnected'));
 });
-app.set('io', io); // make io accessible in routes
+app.set('io', io);
 
 // Connect to MongoDB and start
 mongoose.connect(process.env.MONGO_URI)
@@ -72,7 +71,6 @@ async function seedAdmin() {
     console.log('✅ Default admin created: admin@bharatsevak.in / admin@123');
   }
 
-  // Seed default menus
   const Menu = require('./models/Menu');
   const menuCount = await Menu.countDocuments();
   if (menuCount === 0) {
@@ -89,8 +87,6 @@ async function seedAdmin() {
       { name: 'Servant', icon: '🧑‍🍳', type: 'service_type', level: 0 },
     ];
     const createdMenus = await Menu.insertMany(defaultMenus.map(m => ({ ...m, createdBy: adminUser._id })));
-
-    // Add sub-categories under Food
     const food = createdMenus.find(m => m.name === 'Food');
     if (food) {
       await Menu.insertMany([
@@ -99,7 +95,6 @@ async function seedAdmin() {
         { name: 'Nutrition', icon: '💊', type: 'product_category', parentId: food._id, level: 1, createdBy: adminUser._id },
       ]);
     }
-    // Add sub-types under Tuition
     const tuition = createdMenus.find(m => m.name === 'Tuition');
     if (tuition) {
       await Menu.insertMany([

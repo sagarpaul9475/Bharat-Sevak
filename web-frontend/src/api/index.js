@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'https://bharat-sevak.onrender.com/api' || 'http://localhost:4000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://bharat-sevak.onrender.com/api',
 });
 
 API.interceptors.request.use((config) => {
@@ -97,6 +97,12 @@ export const adminAPI = {
   getProviderReport: () => API.get('/admin/reports/providers'),
 };
 
+// Online payments (Razorpay)
+export const paymentAPI = {
+  createOrder: (orderId) => API.post(`/payments/orders/${orderId}/create`),
+  verifyOrder: (orderId, data) => API.post(`/payments/orders/${orderId}/verify`, data),
+};
+
 // Complaints / Grievance
 export const complaintsAPI = {
   file: (data) => API.post('/complaints', data),
@@ -107,8 +113,9 @@ export const complaintsAPI = {
 
 // Uploads
 export const uploadAPI = {
-  uploadKyc: (formData) => API.post('/upload/kyc', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  uploadBusiness: (formData) => API.post('/upload/business', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadKyc: (formData) => API.post('/upload/kyc', formData),
+  uploadBusiness: (formData) => API.post('/upload/business', formData),
+  downloadDocument: (userId, category, filename) => API.get(`/upload/document/${userId}/${category}/${encodeURIComponent(filename)}`, { responseType: 'blob' }),
   deleteKyc: (filename) => API.delete(`/upload/kyc/${filename}`),
   deleteBusiness: (filename) => API.delete(`/upload/business/${filename}`),
   myDocs: () => API.get('/upload/my-docs'),

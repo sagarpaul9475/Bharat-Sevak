@@ -23,6 +23,16 @@ router.get('/dashboard', providerGuard, async (req, res) => {
       { $match: { provider: providerId, paymentStatus: 'paid' } },
       { $group: { _id: null, total: { $sum: '$totalAmount' } } }
     ]);
+    const payoutSummary = await Order.aggregate([
+      { $match: { provider: providerId, paymentStatus: 'paid' } },
+      { $group: {
+        _id: '$providerPayoutStatus',
+        orders: { $sum: 1 },
+        amount: { $sum: '$providerTransferAmount' }
+      } }
+    ]);
+    const routeProfile = await User.findById(providerId)
+      .select('razorpayRouteAccountId razorpayRouteStatus');
     // Unique customers
     const uniqueCustomers = await Order.distinct('customer', { provider: providerId });
     const recentOrders = await Order.find({ provider: providerId }).sort('-createdAt').limit(5)
@@ -30,7 +40,7 @@ router.get('/dashboard', providerGuard, async (req, res) => {
     // Co-providers (other providers in the system)
     const coProviders = await User.find({ role: 'provider', _id: { $ne: providerId }, status: 'approved' })
       .select('name businessName providerType region').limit(10);
-    res.json({ products, services, totalOrders, pendingOrders, completedOrders, revenue: revenue[0]?.total || 0, uniqueCustomers: uniqueCustomers.length, recentOrders, coProviders });
+    res.json({ products, services, totalOrders, pendingOrders, completedOrders, revenue: revenue[0]?.total || 0, uniqueCustomers: uniqueCustomers.length, recentOrders, coProviders, routePayouts: { status: routeProfile?.razorpayRouteStatus || 'not_started', linkedAccountConfigured: Boolean(routeProfile?.razorpayRouteAccountId), summary: payoutSummary } });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

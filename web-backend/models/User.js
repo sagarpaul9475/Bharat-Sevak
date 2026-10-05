@@ -17,6 +17,9 @@ const userSchema = new mongoose.Schema({
   // Provider-specific fields
   providerType: { type: String, enum: ['product', 'service', 'both'], default: 'product' },
   businessName: { type: String, default: '' },
+  // Set by an admin only after the provider is onboarded and approved by Razorpay Route.
+  razorpayRouteAccountId: { type: String, default: '', trim: true },
+  razorpayRouteStatus: { type: String, enum: ['not_started', 'pending', 'active', 'restricted'], default: 'not_started' },
   businessDesc: { type: String, default: '' },
   govtIdProof: { type: String, default: '' },
   isVerified: { type: Boolean, default: false },

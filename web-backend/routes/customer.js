@@ -58,26 +58,55 @@ router.post('/orders', verifyToken, async (req, res) => {
     const { items, paymentMethod, deliveryAddress, notes } = req.body;
     if (!items || items.length === 0) return res.status(400).json({ message: 'No items in order' });
 
-    // Get provider from first item
-    let providerDoc;
-    const firstItem = items[0];
-    if (firstItem.itemType === 'product') {
-      const p = await Product.findById(firstItem.item);
-      if (!p) return res.status(404).json({ message: 'Product not found' });
-      providerDoc = p.provider;
-    } else {
-      const s = await Service.findById(firstItem.item);
-      if (!s) return res.status(404).json({ message: 'Service not found' });
-      providerDoc = s.provider;
+    if (!Array.isArray(items) || items.length === 0 || items.length > 30) {
+      return res.status(400).json({ message: 'Choose between 1 and 30 items' });
     }
 
-    const totalAmount = items.reduce((sum, i) => sum + (i.itemPrice * (i.quantity || 1)), 0);
+    // Recalculate prices and names from the database. Never trust amounts sent by the browser.
+    let providerId = null;
+    const orderItems = [];
+    for (const requested of items) {
+      if (!['product', 'service'].includes(requested.itemType)) {
+        return res.status(400).json({ message: 'Invalid item type' });
+      }
+      const quantity = Number(requested.quantity || 1);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+        return res.status(400).json({ message: 'Quantity must be between 1 and 99' });
+      }
+
+      const itemDoc = requested.itemType === 'product'
+        ? await Product.findOne({ _id: requested.item, status: 'approved' })
+        : await Service.findOne({ _id: requested.item, status: 'approved' });
+      if (!itemDoc) return res.status(404).json({ message: 'One of the selected items is unavailable' });
+
+      const itemProviderId = String(itemDoc.provider);
+      if (providerId && providerId !== itemProviderId) {
+        return res.status(400).json({ message: 'You can only order from one provider at a time' });
+      }
+      providerId = itemProviderId;
+      const itemPrice = Number(requested.itemType === 'product' ? itemDoc.price : itemDoc.rate);
+      if (!Number.isFinite(itemPrice) || itemPrice < 0) {
+        return res.status(400).json({ message: 'An item has an invalid price' });
+      }
+      orderItems.push({
+        itemType: requested.itemType,
+        item: itemDoc._id,
+        itemName: itemDoc.name,
+        itemPrice,
+        quantity,
+        subtotal: itemPrice * quantity,
+      });
+    }
+
+    const totalAmount = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const allowedPaymentMethods = ['cash', 'qr', 'online'];
+    const selectedPaymentMethod = allowedPaymentMethods.includes(paymentMethod) ? paymentMethod : 'cash';
     const order = await Order.create({
       customer: req.user._id,
-      provider: providerDoc,
-      items: items.map(i => ({ ...i, subtotal: i.itemPrice * (i.quantity || 1) })),
+      provider: providerId,
+      items: orderItems,
       totalAmount,
-      paymentMethod: paymentMethod || 'cash',
+      paymentMethod: selectedPaymentMethod,
       deliveryAddress,
       notes,
       statusHistory: [{ status: 'pending', changedBy: req.user._id }]
