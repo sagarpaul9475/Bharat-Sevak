@@ -23,6 +23,8 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
   paymentMethod: { type: String, enum: ['qr', 'cash', 'online'], default: 'cash' },
   txnId: { type: String, default: '' },
+  gatewayOrderId: { type: String, default: '' },
+  gatewayPaymentId: { type: String, default: '' },
   deliveryAddress: { type: String, default: '' },
   notes: { type: String, default: '' },
   adminNotified: { type: Boolean, default: false },
