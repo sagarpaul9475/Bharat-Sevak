@@ -25,11 +25,14 @@ const routeTransfersEnabled = (keyId) =>
 const razorpayAuth = (keyId, keySecret) =>
   'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
 
-async function createProviderTransfer({ keyId, keySecret, order, provider }) {
+async function createProviderTransfer({ keyId, keySecret, order, provider, payment }) {
   const commissionPercent = getCommissionPercent();
   const grossPaise = Math.round(Number(order.totalAmount) * 100);
   const commissionPaise = Math.round(grossPaise * commissionPercent / 100);
-  const providerPaise = grossPaise - commissionPaise;
+  // Razorpay Route requires fees and tax to be deducted from the amount transferred.
+  // Keep these amounts out of the provider payout calculation unless the API returns them.
+  const gatewayFeeAndTaxPaise = Math.max(0, Number(payment.fee || 0)) + Math.max(0, Number(payment.tax || 0));
+  const providerPaise = Math.max(0, grossPaise - commissionPaise - gatewayFeeAndTaxPaise);
 
   order.platformCommissionPercent = commissionPercent;
   order.platformCommissionAmount = commissionPaise / 100;
@@ -202,7 +205,7 @@ router.post('/orders/:id/verify', verifyToken, async (req, res) => {
     // disabled by default and live transfers require a separate explicit environment flag.
     const provider = await User.findById(order.provider).select('razorpayRouteAccountId razorpayRouteStatus');
     try {
-      await createProviderTransfer({ keyId, keySecret, order, provider });
+      await createProviderTransfer({ keyId, keySecret, order, provider, payment });
     } catch (transferError) {
       order.providerPayoutStatus = 'failed';
     }
