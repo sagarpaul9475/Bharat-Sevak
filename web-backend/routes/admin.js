@@ -93,6 +93,34 @@ router.put('/approvals/providers/:id/reject', adminGuard, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// ── Razorpay Route provider onboarding ───────────────────────
+// Admin must copy the linked account ID from the approved Razorpay Route dashboard.
+// This endpoint does not create linked accounts or move money.
+router.put('/providers/:id/razorpay-route', adminGuard, async (req, res) => {
+  try {
+    const { linkedAccountId, routeStatus } = req.body;
+    const allowedStatuses = ['not_started', 'pending', 'active', 'restricted'];
+    if (routeStatus !== undefined && !allowedStatuses.includes(routeStatus)) {
+      return res.status(400).json({ message: 'Invalid Route onboarding status' });
+    }
+    if (linkedAccountId !== undefined && typeof linkedAccountId !== 'string') {
+      return res.status(400).json({ message: 'Linked account ID must be a string' });
+    }
+    const update = {};
+    if (linkedAccountId !== undefined) update.razorpayRouteAccountId = linkedAccountId.trim();
+    if (routeStatus !== undefined) update.razorpayRouteStatus = routeStatus;
+    const provider = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'provider' },
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select('name businessName razorpayRouteAccountId razorpayRouteStatus');
+    if (!provider) return res.status(404).json({ message: 'Provider not found' });
+    res.json({ message: 'Provider Route settings updated', provider });
+  } catch (error) {
+    res.status(500).json({ message: 'Could not update provider Route settings' });
+  }
+});
+
 // ── Product Approvals ────────────────────────────────────────
 router.get('/approvals/products', adminGuard, async (req, res) => {
   try {
