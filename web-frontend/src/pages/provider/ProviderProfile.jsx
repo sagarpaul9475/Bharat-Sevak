@@ -63,6 +63,7 @@ export default function ProviderProfile() {
     district: user?.region?.district || '', area: user?.region?.area || ''
   });
   const [saving, setSaving] = useState(false);
+  const [isVerified, setIsVerified] = useState(Boolean(user?.isVerified));
   const [kycDocs, setKycDocs] = useState([]);
   const [businessDocs, setBusinessDocs] = useState([]);
   const [kycType, setKycType] = useState('aadhaar');
@@ -143,6 +144,7 @@ export default function ProviderProfile() {
         setBusinessFile(null);
         if (businessInput.current) businessInput.current.value = '';
       }
+      setIsVerified(false);
       await loadDocs();
       toast.success(response.data?.message || 'Document uploaded successfully');
     } catch (error) {
@@ -295,10 +297,10 @@ export default function ProviderProfile() {
           <section className="card">
             <h2 className="text-lg font-bold mb-3">Verification status</h2>
             <div className="p-4 rounded" style={{
-              background: user?.isVerified ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-              border: `1px solid ${user?.isVerified ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`
+              background: isVerified ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+              border: `1px solid ${isVerified ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`
             }}>
-              <div className="font-bold">{user?.isVerified ? '✅ Verified provider' : '⏳ Verification pending'}</div>
+              <div className="font-bold">{isVerified ? '✅ Verified provider' : '⏳ Verification pending'}</div>
               <p className="text-sm mt-1">
                 {user?.isVerified
                   ? 'Your provider account is marked as verified.'
