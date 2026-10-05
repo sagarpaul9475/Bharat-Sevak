@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { adminAPI, uploadAPI } from '../../api';
 import toast from 'react-hot-toast';
 
@@ -89,7 +89,8 @@ export default function AdminApprovals() {
                 <thead><tr><th>Name</th><th>Business</th><th>Type</th><th>Phone</th><th>Region</th><th>Registered</th><th>Actions</th></tr></thead>
                 <tbody>
                   {providers.map(p => (
-                    <tr key={p._id}>
+                    <Fragment key={p._id}>
+                    <tr>
                       <td><div style={{ fontWeight: 600 }}>{p.name}</div><div className="text-sm text-muted">{p.email}</div></td>
                       <td>{p.businessName || '—'}</td>
                       <td><span className="badge badge-info">{p.providerType}</span></td>
@@ -133,6 +134,7 @@ export default function AdminApprovals() {
                         </div>
                       </td>
                     </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
