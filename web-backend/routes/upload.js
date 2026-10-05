@@ -12,7 +12,7 @@ const ensureDir = (dir) => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recurs
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const type = req.query.docCategory === 'business' ? 'business' : 'kyc';
+    const type = req.path.startsWith('/business') ? 'business' : 'kyc';
     const dir = path.join(__dirname, '..', 'uploads', String(req.user._id), type);
     ensureDir(dir);
     cb(null, dir);
