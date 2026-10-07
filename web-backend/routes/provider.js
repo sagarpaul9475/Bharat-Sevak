@@ -5,6 +5,7 @@ const Service = require('../models/Service');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { notifyUser, notifyRole } = require('../utils/notifications');
 
 const providerGuard = [verifyToken, requireRole('provider', 'admin')];
 
@@ -55,6 +56,13 @@ router.get('/products', providerGuard, async (req, res) => {
 router.post('/products', providerGuard, async (req, res) => {
   try {
     const product = await Product.create({ ...req.body, provider: req.user._id, region: req.user.region, status: 'pending' });
+    await notifyRole('admin', {
+      title: 'Product awaiting review',
+      message: `${req.user.businessName || req.user.name} submitted a product for approval.`,
+      type: 'listing',
+      link: '/admin/approvals',
+      metadata: { listingId: String(product._id), listingType: 'product' },
+    });
     res.status(201).json(product);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -87,6 +95,13 @@ router.get('/services', providerGuard, async (req, res) => {
 router.post('/services', providerGuard, async (req, res) => {
   try {
     const service = await Service.create({ ...req.body, provider: req.user._id, region: req.user.region, status: 'pending' });
+    await notifyRole('admin', {
+      title: 'Service awaiting review',
+      message: `${req.user.businessName || req.user.name} submitted a service for approval.`,
+      type: 'listing',
+      link: '/admin/approvals',
+      metadata: { listingId: String(service._id), listingType: 'service' },
+    });
     res.status(201).json(service);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -128,9 +143,24 @@ router.put('/orders/:id/status', providerGuard, async (req, res) => {
     if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
     const order = await Order.findOne({ _id: req.params.id, provider: req.user._id });
     if (!order) return res.status(404).json({ message: 'Order not found' });
+    const previousStatus = order.status;
     order.status = status;
     order.statusHistory.push({ status, changedBy: req.user._id, note: note || '' });
     await order.save();
+
+    const statusLabels = {
+      confirmed: 'accepted',
+      in_progress: 'being prepared',
+      completed: 'completed',
+      rejected: 'rejected',
+    };
+    await notifyUser(order.customer, {
+      title: 'Order update',
+      message: `Your order ${order.orderId || order._id} has been ${statusLabels[status]}.${status === 'rejected' && note ? ` Note: ${note}` : ''}`,
+      type: 'order',
+      link: '/orders',
+      metadata: { orderId: String(order._id), status, previousStatus },
+    });
     res.json(order);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });

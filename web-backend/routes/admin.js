@@ -8,6 +8,7 @@ const Menu = require('../models/Menu');
 const Region = require('../models/Region');
 const bcrypt = require('bcryptjs');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { notifyUser } = require('../utils/notifications');
 
 const adminGuard = [verifyToken, requireRole('admin')];
 
@@ -82,6 +83,12 @@ router.put('/approvals/providers/:id/approve', adminGuard, async (req, res) => {
     user.isVerified = true;
     await user.save();
     user.password = undefined;
+    await notifyUser(user._id, {
+      title: 'Provider verification approved',
+      message: 'Your provider account has been approved. You can now manage your listings and orders.',
+      type: 'verification',
+      link: '/provider',
+    });
     res.json({ message: 'Provider approved', user });
   } catch (err) { res.status(500).json({ message: 'Could not approve provider' }); }
 });
@@ -89,6 +96,12 @@ router.put('/approvals/providers/:id/approve', adminGuard, async (req, res) => {
 router.put('/approvals/providers/:id/reject', adminGuard, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true }).select('-password');
+    if (user) await notifyUser(user._id, {
+      title: 'Provider verification update',
+      message: 'Your provider application was rejected. Please review the information submitted or contact support.',
+      type: 'verification',
+      link: '/provider/profile',
+    });
     res.json({ message: 'Provider rejected', user });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -132,6 +145,13 @@ router.get('/approvals/products', adminGuard, async (req, res) => {
 router.put('/approvals/products/:id/approve', adminGuard, async (req, res) => {
   try {
     const p = await Product.findByIdAndUpdate(req.params.id, { status: 'approved' }, { new: true });
+    if (p) await notifyUser(p.provider, {
+      title: 'Product approved',
+      message: `Your product "${p.name}" is approved and can appear in the marketplace.`,
+      type: 'listing',
+      link: '/provider/products',
+      metadata: { listingId: String(p._id), listingType: 'product' },
+    });
     res.json({ message: 'Product approved', product: p });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -140,6 +160,13 @@ router.put('/approvals/products/:id/reject', adminGuard, async (req, res) => {
   try {
     const { reason } = req.body;
     const p = await Product.findByIdAndUpdate(req.params.id, { status: 'rejected', rejectionReason: reason || '' }, { new: true });
+    if (p) await notifyUser(p.provider, {
+      title: 'Product needs changes',
+      message: `Your product "${p.name}" was rejected.${reason ? ` Reason: ${reason}` : ' Please review the listing and resubmit.'}`,
+      type: 'listing',
+      link: '/provider/products',
+      metadata: { listingId: String(p._id), listingType: 'product' },
+    });
     res.json({ message: 'Product rejected', product: p });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -155,6 +182,13 @@ router.get('/approvals/services', adminGuard, async (req, res) => {
 router.put('/approvals/services/:id/approve', adminGuard, async (req, res) => {
   try {
     const s = await Service.findByIdAndUpdate(req.params.id, { status: 'approved' }, { new: true });
+    if (s) await notifyUser(s.provider, {
+      title: 'Service approved',
+      message: `Your service "${s.name || s.title}" is approved and can appear in the marketplace.`,
+      type: 'listing',
+      link: '/provider/services',
+      metadata: { listingId: String(s._id), listingType: 'service' },
+    });
     res.json({ message: 'Service approved', service: s });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -163,6 +197,13 @@ router.put('/approvals/services/:id/reject', adminGuard, async (req, res) => {
   try {
     const { reason } = req.body;
     const s = await Service.findByIdAndUpdate(req.params.id, { status: 'rejected', rejectionReason: reason || '' }, { new: true });
+    if (s) await notifyUser(s.provider, {
+      title: 'Service needs changes',
+      message: `Your service "${s.name || s.title}" was rejected.${reason ? ` Reason: ${reason}` : ' Please review the listing and resubmit.'}`,
+      type: 'listing',
+      link: '/provider/services',
+      metadata: { listingId: String(s._id), listingType: 'service' },
+    });
     res.json({ message: 'Service rejected', service: s });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });

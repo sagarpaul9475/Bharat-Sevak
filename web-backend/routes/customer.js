@@ -6,6 +6,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Menu = require('../models/Menu');
 const { verifyToken } = require('../middleware/auth');
+const { notifyUser, notifyRole } = require('../utils/notifications');
 
 // ── Public: Browse Products ──────────────────────────────────
 router.get('/products', async (req, res) => {
@@ -111,6 +112,22 @@ router.post('/orders', verifyToken, async (req, res) => {
       notes,
       statusHistory: [{ status: 'pending', changedBy: req.user._id }]
     });
+    await Promise.all([
+      notifyUser(providerId, {
+        title: 'New order received',
+        message: `A customer placed order ${order.orderId || order._id}.`,
+        type: 'order',
+        link: '/provider/orders',
+        metadata: { orderId: String(order._id) },
+      }),
+      notifyRole('admin', {
+        title: 'New marketplace order',
+        message: `Order ${order.orderId || order._id} was placed and is awaiting processing.`,
+        type: 'order',
+        link: '/admin/orders',
+        metadata: { orderId: String(order._id) },
+      }),
+    ]);
     res.status(201).json(order);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -147,6 +164,13 @@ router.post('/orders/:id/cancel', verifyToken, async (req, res) => {
     order.status = 'cancelled';
     order.statusHistory.push({ status: 'cancelled', changedBy: req.user._id });
     await order.save();
+    await notifyUser(order.provider, {
+      title: 'Order cancelled',
+      message: `The customer cancelled order ${order.orderId || order._id}.`,
+      type: 'order',
+      link: '/provider/orders',
+      metadata: { orderId: String(order._id) },
+    });
     res.json(order);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });

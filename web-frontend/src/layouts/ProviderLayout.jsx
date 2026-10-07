@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import NotificationBell from '../components/NotificationBell';
 
 const navItems = [
   { to: '/provider', icon: '🏠', label: 'Dashboard', end: true },
@@ -67,6 +68,7 @@ export default function ProviderLayout() {
             <span style={{ fontWeight: 600 }}>{user?.businessName || user?.name}</span>
           </div>
           {user?.isVerified ? <div className="badge badge-approved">✅ Verified</div> : <div className="badge badge-pending">⏳ Pending Verification</div>}
+          <NotificationBell />
         </header>
         <div className="page-content animate-fade"><Outlet /></div>
       </div>

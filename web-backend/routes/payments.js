@@ -4,6 +4,7 @@ const router = express.Router();
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { verifyToken } = require('../middleware/auth');
+const { notifyUser } = require('../utils/notifications');
 
 const getCredentials = () => ({
   keyId: process.env.RAZORPAY_KEY_ID,
@@ -210,6 +211,22 @@ router.post('/orders/:id/verify', verifyToken, async (req, res) => {
       order.providerPayoutStatus = 'failed';
     }
     await order.save();
+    await Promise.all([
+      notifyUser(order.customer, {
+        title: 'Payment successful',
+        message: `Payment for order ${order.orderId || order._id} has been verified.`,
+        type: 'payment',
+        link: '/orders',
+        metadata: { orderId: String(order._id), paymentId: razorpay_payment_id },
+      }),
+      notifyUser(order.provider, {
+        title: 'Customer payment received',
+        message: `Order ${order.orderId || order._id} has a verified customer payment. Provider payout status: ${order.providerPayoutStatus || 'pending'}.`,
+        type: 'payment',
+        link: '/provider/orders',
+        metadata: { orderId: String(order._id), payoutStatus: order.providerPayoutStatus || 'pending' },
+      }),
+    ]);
     res.json({
       message: 'Payment verified successfully',
       order,
