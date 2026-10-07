@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import NotificationBell from '../components/NotificationBell';
 
 export default function CustomerLayout({ children }) {
   const { user, logout } = useAuth();
@@ -31,6 +32,7 @@ export default function CustomerLayout({ children }) {
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           {user ? (
             <>
+              <NotificationBell />
               <Link to="/profile" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
                 <div className="avatar">{user.name?.[0]?.toUpperCase()}</div>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{user.name}</span>
