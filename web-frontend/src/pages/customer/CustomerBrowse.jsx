@@ -11,46 +11,69 @@ export default function CustomerBrowse() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  
-  // Cart state
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(0);
+
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
 
   const load = () => {
     setLoading(true);
-    const apiCall = tab === 'products' ? customerAPI.getProducts({ search }) : customerAPI.getServices({ search });
-    apiCall.then(r => setItems(tab === 'products' ? r.data.products : r.data.services))
+    const apiCall = tab === 'products'
+      ? customerAPI.getProducts({ search })
+      : customerAPI.getServices({ search });
+    apiCall
+      .then(r => setItems(tab === 'products' ? r.data.products : r.data.services))
       .catch(() => toast.error('Failed to load items'))
       .finally(() => setLoading(false));
   };
-  
+
   useEffect(() => { load(); }, [tab]);
-  useEffect(() => { const timer = setTimeout(load, 500); return () => clearTimeout(timer); }, [search]);
+  useEffect(() => {
+    const timer = setTimeout(load, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const addToCart = (item) => {
-    if (!user) { toast.error('Please login to order'); navigate('/login'); return; }
-    
-    // Check if mixing providers
-    if (cart.length > 0 && cart[0].providerId !== item.provider._id) {
+    if (!user) {
+      toast.error('Please login to order');
+      navigate('/login');
+      return;
+    }
+
+    const providerId = item.provider?._id;
+    if (!providerId) {
+      toast.error('This listing has no provider');
+      return;
+    }
+
+    if (cart.length > 0 && cart[0].providerId !== providerId) {
       toast.error('You can only order from one provider at a time. Please checkout or clear cart first.');
       return;
     }
 
     setCart(prev => {
       const existing = prev.find(i => i.item === item._id);
-      if (existing) return prev.map(i => i.item === item._id ? { ...i, quantity: i.quantity + 1 } : i);
+      if (existing) {
+        return prev.map(i => i.item === item._id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
       return [...prev, {
         itemType: tab === 'products' ? 'product' : 'service',
         item: item._id,
         itemName: item.name,
         itemPrice: tab === 'products' ? item.price : item.rate,
         quantity: 1,
-        providerId: item.provider._id,
-        providerName: item.provider.businessName || item.provider.name
+        providerId,
+        providerName: item.provider.businessName || item.provider.name,
       }];
     });
     toast.success('Added to cart');
+  };
+
+  const openDetails = (item) => {
+    setSelectedItem(item);
+    setSelectedImage(0);
   };
 
   const updateQty = (itemId, newQty) => {
@@ -98,9 +121,9 @@ export default function CustomerBrowse() {
           ondismiss: () => {
             toast('Your order is saved. You can retry payment from My Orders.');
             navigate('/orders');
-          }
+          },
         },
-        theme: { color: '#F59E0B' }
+        theme: { color: '#F59E0B' },
       });
       checkout.on('payment.failed', (response) => {
         toast.error(response.error?.description || 'Payment failed. You can retry from My Orders.');
@@ -119,7 +142,7 @@ export default function CustomerBrowse() {
       const { data: order } = await customerAPI.placeOrder({
         items: cart.map(({ itemType, item, quantity }) => ({ itemType, item, quantity })),
         paymentMethod,
-        deliveryAddress: user.address || 'My Default Address'
+        deliveryAddress: user.address || 'My Default Address',
       });
       setCart([]);
       setShowCart(false);
@@ -138,6 +161,8 @@ export default function CustomerBrowse() {
   };
 
   const cartTotal = cart.reduce((sum, i) => sum + (i.itemPrice * i.quantity), 0);
+  const isProduct = tab === 'products';
+  const selectedImages = selectedItem?.images || [];
 
   return (
     <div className="animate-fade relative">
@@ -151,7 +176,7 @@ export default function CustomerBrowse() {
         </button>
       </div>
 
-      <div className="card mb-6" style={{ display: 'flex', gap: 16, padding: 12 }}>
+      <div className="card mb-6 browse-toolbar">
         <div className="search-wrap" style={{ flex: 1 }}>
           <span className="search-icon">🔍</span>
           <input className="form-input" placeholder="Search by name, category, or tags..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -163,47 +188,119 @@ export default function CustomerBrowse() {
       </div>
 
       {loading ? <div className="loading-center"><div className="spinner" /></div> : (
-        items.length === 0 ? <div className="empty-state"><div className="empty-icon">🔍</div><div className="empty-title">No items found</div></div> :
-        <div className="grid-4">
-          {items.map(item => (
-            <div key={item._id} className="product-card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="product-img" style={{ height: 160, fontSize: 40 }}>{item.name[0].toUpperCase()}</div>
-              <div className="product-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <h3 className="product-name truncate">{item.name}</h3>
-                <div className="text-xs text-muted mb-2 truncate">By {item.provider?.businessName || item.provider?.name}</div>
-                <div className="product-price mt-auto mb-3">
-                  ₹{tab === 'products' ? item.price : item.rate}
-                  <span className="text-xs text-muted font-normal"> / {tab === 'products' ? item.unit : item.rateUnit}</span>
-                </div>
-                <div className="text-xs text-muted mb-3">📍 {[item.provider?.region?.area, item.provider?.region?.district].filter(Boolean).join(', ')}</div>
-                {(() => {
-                  const cartItem = cart.find(c => c.item === item._id);
-                  return cartItem ? (
-                    <div className="flex items-center justify-between" style={{ border: '1.5px solid var(--saffron)', borderRadius: 8, overflow: 'hidden' }}>
-                      <button onClick={() => updateQty(item._id, cartItem.quantity - 1)} style={{ background: 'var(--saffron)', border: 'none', color: 'white', width: 36, height: 36, fontSize: 18, cursor: 'pointer', flexShrink: 0 }}>−</button>
-                      <input
-                        type="number" min="1" value={cartItem.quantity}
-                        onChange={e => updateQty(item._id, Number(e.target.value))}
-                        style={{ width: '100%', textAlign: 'center', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontWeight: 700, fontSize: 15, outline: 'none' }}
-                      />
-                      <button onClick={() => updateQty(item._id, cartItem.quantity + 1)} style={{ background: 'var(--saffron)', border: 'none', color: 'white', width: 36, height: 36, fontSize: 18, cursor: 'pointer', flexShrink: 0 }}>+</button>
+        items.length === 0 ? (
+          <div className="empty-state"><div className="empty-icon">🔍</div><div className="empty-title">No items found</div></div>
+        ) : (
+          <div className="grid-4">
+            {items.map(item => {
+              const cover = item.images?.[0];
+              const ratingAvailable = typeof item.rating === 'number' && item.rating > 0;
+              return (
+                <div key={item._id} className="product-card customer-product-card">
+                  {cover ? (
+                    <div className="customer-card-media">
+                      <img className="product-img" src={cover} alt={item.name} />
+                      {item.videoUrl && <span className="media-chip">🎬 Video</span>}
+                      {item.images?.length > 1 && <span className="media-chip media-count">📷 {item.images.length}</span>}
                     </div>
                   ) : (
-                    <button className="btn btn-primary w-full justify-center" onClick={() => addToCart(item)}>Add to Cart</button>
-                  );
-                })()}
+                    <div className="product-img">{item.name?.[0]?.toUpperCase() || '📦'}</div>
+                  )}
+                  <div className="product-body">
+                    <h3 className="product-name truncate" title={item.name}>{item.name}</h3>
+                    <div className="text-xs text-muted mb-2 truncate">
+                      By {item.provider?.businessName || item.provider?.name || 'Local provider'}
+                    </div>
+                    {ratingAvailable && (
+                      <div className="rating-line mb-2">★ {item.rating.toFixed(1)}{item.ratingCount ? ` · ${item.ratingCount} ratings` : ''}</div>
+                    )}
+                    <div className="product-price mb-2">
+                      ₹{isProduct ? item.price : item.rate}
+                      <span className="text-xs text-muted font-normal"> / {isProduct ? item.unit : item.rateUnit}</span>
+                    </div>
+                    <div className="text-xs text-muted mb-3">
+                      📍 {[item.provider?.region?.area, item.provider?.region?.district].filter(Boolean).join(', ') || 'Local area'}
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => openDetails(item)}>
+                        View Details
+                      </button>
+                      <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => addToCart(item)}>
+                        Buy
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
+
+      {selectedItem && (
+        <div className="modal-overlay" onClick={(e) => e.target.classList.contains('modal-overlay') && setSelectedItem(null)}>
+          <div className="modal-box wide product-details-modal">
+            <div className="modal-head">
+              <h2>{selectedItem.name}</h2>
+              <button className="btn-icon btn-secondary" onClick={() => setSelectedItem(null)}>✕</button>
+            </div>
+
+            <div className="product-details-grid">
+              <div>
+                {selectedImages.length > 0 ? (
+                  <>
+                    <div className="details-cover">
+                      <img src={selectedImages[selectedImage]} alt={selectedItem.name} />
+                    </div>
+                    <div className="details-thumbnails">
+                      {selectedImages.map((url, index) => (
+                        <button key={url} type="button" className={index === selectedImage ? 'active' : ''} onClick={() => setSelectedImage(index)}>
+                          <img src={url} alt="" />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="details-cover details-placeholder">{selectedItem.name?.[0]?.toUpperCase() || '📦'}</div>
+                )}
+
+                {isProduct && selectedItem.videoUrl && (
+                  <div className="details-video mt-4">
+                    <div className="form-label mb-2">Product video</div>
+                    <video src={selectedItem.videoUrl} controls playsInline preload="metadata" />
+                  </div>
+                )}
+              </div>
+
+              <div className="product-details-copy">
+                <div className="text-sm text-muted mb-2">
+                  By <strong>{selectedItem.provider?.businessName || selectedItem.provider?.name}</strong>
+                </div>
+                {typeof selectedItem.rating === 'number' && selectedItem.rating > 0 && (
+                  <div className="rating-line mb-3">★ {selectedItem.rating.toFixed(1)}{selectedItem.ratingCount ? ` · ${selectedItem.ratingCount} ratings` : ''}</div>
+                )}
+                <div className="product-price text-2xl mb-4">
+                  ₹{isProduct ? selectedItem.price : selectedItem.rate}
+                  <span className="text-xs text-muted font-normal"> / {isProduct ? selectedItem.unit : selectedItem.rateUnit}</span>
+                </div>
+                <p className="text-muted" style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{selectedItem.description || 'No description provided.'}</p>
+                {isProduct && selectedItem.stock !== undefined && (
+                  <div className="text-sm mt-4">Stock: <strong>{selectedItem.stock}</strong> {selectedItem.unit}</div>
+                )}
+                <button className="btn btn-primary w-full justify-center mt-6" onClick={() => { addToCart(selectedItem); setSelectedItem(null); }}>
+                  🛒 Buy / Add to Cart
+                </button>
               </div>
             </div>
-          ))}
+          </div>
         </div>
       )}
 
-      {/* Cart Sidebar/Modal */}
       {showCart && (
         <div className="modal-overlay" style={{ justifyContent: 'flex-end', padding: 0 }} onClick={(e) => e.target.classList.contains('modal-overlay') && setShowCart(false)}>
           <div className="modal-box" style={{ width: 400, height: '100vh', borderRadius: 0, margin: 0, display: 'flex', flexDirection: 'column' }}>
             <div className="modal-head"><h2>🛒 Your Cart</h2><button className="btn-icon btn-secondary" onClick={() => setShowCart(false)}>✕</button></div>
-            
+
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {cart.length === 0 ? <div className="empty-state"><div className="empty-icon">🛒</div><div className="empty-title">Cart is empty</div></div> : (
                 <>
@@ -217,11 +314,7 @@ export default function CustomerBrowse() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center" style={{ border: '1.5px solid var(--navy-border)', borderRadius: 8, overflow: 'hidden' }}>
                           <button onClick={() => updateQty(i.item, i.quantity - 1)} style={{ background: 'var(--navy-border)', border: 'none', color: 'var(--text-primary)', width: 32, height: 32, fontSize: 16, cursor: 'pointer' }}>−</button>
-                          <input
-                            type="number" min="1" value={i.quantity}
-                            onChange={e => updateQty(i.item, Number(e.target.value))}
-                            style={{ width: 52, textAlign: 'center', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontWeight: 700, fontSize: 15, outline: 'none', padding: 0 }}
-                          />
+                          <input type="number" min="1" value={i.quantity} onChange={e => updateQty(i.item, Number(e.target.value))} style={{ width: 52, textAlign: 'center', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontWeight: 700, fontSize: 15, outline: 'none', padding: 0 }} />
                           <button onClick={() => updateQty(i.item, i.quantity + 1)} style={{ background: 'var(--navy-border)', border: 'none', color: 'var(--text-primary)', width: 32, height: 32, fontSize: 16, cursor: 'pointer' }}>+</button>
                         </div>
                         <div className="font-bold text-saffron">₹{i.itemPrice * i.quantity}</div>
