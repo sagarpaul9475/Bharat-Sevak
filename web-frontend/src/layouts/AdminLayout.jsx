@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import NotificationBell from '../components/NotificationBell';
 
 const navItems = [
   { to: '/admin', icon: '🏠', label: 'Dashboard', end: true },
@@ -68,6 +69,7 @@ export default function AdminLayout() {
             <span style={{ fontWeight: 600 }}>{user?.name}</span>
           </div>
           <div className="badge badge-info">👑 Admin</div>
+          <NotificationBell />
         </header>
         <div className="page-content animate-fade">
           <Outlet />
