@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -24,11 +25,13 @@ app.use('/api/provider', require('./routes/provider'));
 app.use('/api/customer', require('./routes/customer'));
 app.use('/api/complaints', require('./routes/complaints'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/upload', require('./routes/productMedia'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/notifications', require('./routes/notifications'));
 
-// Do not serve uploads as static files: identity and business documents must
-// only be accessible through the authenticated /api/upload/document endpoint.
+// Product media is intentionally public because approved marketplace listings need browser-accessible images/video.
+// KYC and business documents remain private and are never served statically.
+app.use('/uploads/products', express.static(path.join(__dirname, 'uploads', 'products')));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));

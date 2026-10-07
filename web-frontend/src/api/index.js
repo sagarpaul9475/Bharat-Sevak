@@ -120,6 +120,7 @@ export const complaintsAPI = {
 
 // Uploads
 export const uploadAPI = {
+  uploadProductMedia: (formData) => API.post('/upload/product-media', formData),
   uploadKyc: (formData) => API.post('/upload/kyc', formData),
   uploadBusiness: (formData) => API.post('/upload/business', formData),
   downloadDocument: (userId, category, filename) => API.get(`/upload/document/${userId}/${category}/${encodeURIComponent(filename)}`, { responseType: 'blob' }),

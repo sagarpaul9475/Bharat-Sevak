@@ -9,6 +9,30 @@ const { notifyUser, notifyRole } = require('../utils/notifications');
 
 const providerGuard = [verifyToken, requireRole('provider', 'admin')];
 
+const validateProductMedia = (req, images, videoUrl) => {
+  const ownerPrefix = '/uploads/products/' + String(req.user._id) + '/';
+  const expectedOrigin = req.protocol + '://' + req.get('host');
+  const isOwnedMediaUrl = (value) => {
+    if (typeof value !== 'string' || !value) return false;
+    try {
+      const parsed = new URL(value, expectedOrigin);
+      return parsed.origin === expectedOrigin && parsed.pathname.startsWith(ownerPrefix);
+    } catch {
+      return false;
+    }
+  };
+
+  const safeImages = Array.isArray(images) ? images : [];
+  if (safeImages.length > 5) throw new Error('Maximum 5 product images are allowed');
+  if (safeImages.some(url => !isOwnedMediaUrl(url))) {
+    throw new Error('Product images must come from the authenticated product media upload');
+  }
+  if (videoUrl && !isOwnedMediaUrl(videoUrl)) {
+    throw new Error('Product video must come from the authenticated product media upload');
+  }
+  return { images: safeImages, videoUrl: videoUrl || '' };
+};
+
 // ── Dashboard Stats ──────────────────────────────────────────
 router.get('/dashboard', providerGuard, async (req, res) => {
   try {
@@ -55,7 +79,15 @@ router.get('/products', providerGuard, async (req, res) => {
 
 router.post('/products', providerGuard, async (req, res) => {
   try {
-    const product = await Product.create({ ...req.body, provider: req.user._id, region: req.user.region, status: 'pending' });
+    const media = validateProductMedia(req, req.body.images || [], req.body.videoUrl);
+    const product = await Product.create({
+      ...req.body,
+      images: media.images,
+      videoUrl: media.videoUrl,
+      provider: req.user._id,
+      region: req.user.region,
+      status: 'pending',
+    });
     await notifyRole('admin', {
       title: 'Product awaiting review',
       message: `${req.user.businessName || req.user.name} submitted a product for approval.`,
@@ -64,17 +96,24 @@ router.post('/products', providerGuard, async (req, res) => {
       metadata: { listingId: String(product._id), listingType: 'product' },
     });
     res.status(201).json(product);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { res.status(400).json({ message: err.message }); }
 });
 
 router.put('/products/:id', providerGuard, async (req, res) => {
   try {
     const product = await Product.findOne({ _id: req.params.id, provider: req.user._id });
     if (!product) return res.status(404).json({ message: 'Product not found' });
-    Object.assign(product, { ...req.body, status: 'pending' }); // Re-submit for approval on edit
+
+    const updates = { ...req.body, status: 'pending' };
+    if (Object.prototype.hasOwnProperty.call(req.body, 'images') || Object.prototype.hasOwnProperty.call(req.body, 'videoUrl')) {
+      const media = validateProductMedia(req, req.body.images || [], req.body.videoUrl);
+      updates.images = media.images;
+      updates.videoUrl = media.videoUrl;
+    }
+    Object.assign(product, updates);
     await product.save();
     res.json(product);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { res.status(400).json({ message: err.message }); }
 });
 
 router.delete('/products/:id', providerGuard, async (req, res) => {

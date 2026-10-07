@@ -675,3 +675,187 @@ input, select, textarea, button {
 .tree-item:hover { border-color: var(--saffron); }
 
 .tree-children { margin-left: 24px; border-left: 1px dashed var(--navy-border); padding-left: 12px; margin-top: 4px; }
+
+
+/* ── Product Media & Customer Browse ───────────────────── */
+.customer-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 24px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+.customer-nav::-webkit-scrollbar { display: none; }
+
+.customer-product-card { cursor: default; }
+.customer-card-media { position: relative; }
+.customer-card-media .product-img { display: block; }
+.media-chip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(15,23,42,0.85);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+}
+.media-count { left: auto; right: 10px; }
+.rating-line { color: #FBBF24; font-size: 12px; font-weight: 700; }
+
+.browse-toolbar {
+  display: flex;
+  gap: 16px;
+  padding: 12px;
+  align-items: center;
+}
+
+.media-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.media-preview {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--navy-border);
+  background: var(--navy);
+}
+.media-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.media-preview button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15,23,42,0.9);
+  color: white;
+  cursor: pointer;
+}
+
+.video-preview-wrap {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.video-preview-wrap video {
+  width: min(420px, 100%);
+  max-height: 260px;
+  border-radius: 10px;
+  background: #000;
+}
+
+.product-details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 28px;
+}
+.details-cover {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--navy);
+  border: 1px solid var(--navy-border);
+}
+.details-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.details-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  color: var(--text-secondary);
+}
+.details-thumbnails {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  overflow-x: auto;
+}
+.details-thumbnails button {
+  width: 68px;
+  height: 58px;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: var(--navy);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.details-thumbnails button.active { border-color: var(--saffron); }
+.details-thumbnails img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.details-video video {
+  width: 100%;
+  max-height: 300px;
+  border-radius: var(--radius-md);
+  background: #000;
+}
+.product-details-copy { padding-top: 8px; }
+
+.customer-scroll-cue {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(148,163,184,0.35);
+  background: rgba(15,23,42,0.88);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 35;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  animation: scrollCueBounce 1.7s ease-in-out infinite;
+}
+.customer-scroll-cue span { font-size: 20px; line-height: 1; }
+@keyframes scrollCueBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(5px); }
+}
+
+@media (max-width: 768px) {
+  .customer-nav {
+    margin-left: 8px;
+    max-width: 42vw;
+  }
+  .browse-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .browse-toolbar .tabs {
+    width: 100%;
+  }
+  .browse-toolbar .tab-btn {
+    flex: 1;
+  }
+  .media-preview-grid { grid-template-columns: repeat(3, 1fr); }
+  .product-details-grid { grid-template-columns: 1fr; gap: 18px; }
+}
