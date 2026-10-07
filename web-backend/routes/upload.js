@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const User = require('../models/User');
 const { verifyToken } = require('../middleware/auth');
+const { notifyRole } = require('../utils/notifications');
 
 // Store documents outside the public static directory. Access is controlled by
 // the authenticated document endpoint below.
@@ -50,6 +51,13 @@ router.post('/kyc', verifyToken, upload.single('file'), async (req, res) => {
       { $push: { kycDocs: doc }, $set: { isVerified: false, status: 'pending' } },
       { new: true }
     ).select('kycDocs businessDocs');
+    await notifyRole('admin', {
+      title: 'Provider identity document submitted',
+      message: `${req.user.businessName || req.user.name} uploaded an identity document for verification.`,
+      type: 'verification',
+      link: '/admin/approvals',
+      metadata: { providerId: String(req.user._id), documentType: docType },
+    });
     res.status(201).json({ message: 'Identity document uploaded', doc: user.kycDocs[user.kycDocs.length - 1], kycDocs: user.kycDocs });
   } catch (err) {
     if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -73,6 +81,13 @@ router.post('/business', verifyToken, upload.single('file'), async (req, res) =>
       { $push: { businessDocs: doc }, $set: { isVerified: false, status: 'pending' } },
       { new: true }
     ).select('kycDocs businessDocs');
+    await notifyRole('admin', {
+      title: 'Business verification document submitted',
+      message: `${req.user.businessName || req.user.name} uploaded business proof for verification.`,
+      type: 'verification',
+      link: '/admin/approvals',
+      metadata: { providerId: String(req.user._id), documentType: docType },
+    });
     res.status(201).json({ message: 'Business verification document uploaded', doc: user.businessDocs[user.businessDocs.length - 1], businessDocs: user.businessDocs });
   } catch (err) {
     if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
