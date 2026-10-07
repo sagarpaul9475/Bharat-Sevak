@@ -97,6 +97,13 @@ export const adminAPI = {
   getProviderReport: () => API.get('/admin/reports/providers'),
 };
 
+// In-app notifications
+export const notificationsAPI = {
+  list: (params) => API.get('/notifications', { params }),
+  markRead: (id) => API.patch(`/notifications/${id}/read`),
+  markAllRead: () => API.patch('/notifications/read-all'),
+};
+
 // Online payments (Razorpay)
 export const paymentAPI = {
   createOrder: (orderId) => API.post(`/payments/orders/${orderId}/create`),
