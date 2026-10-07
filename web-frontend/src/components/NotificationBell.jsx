@@ -87,7 +87,6 @@ export default function NotificationBell() {
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
-        ♧
         <span aria-hidden="true" style={{ fontSize: 19, lineHeight: 1 }}>🔔</span>
         {unreadCount > 0 && (
           <span style={{
