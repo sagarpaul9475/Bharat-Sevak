@@ -21,7 +21,9 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin', require('./routes/adminMessaging'));
 app.use('/api/provider', require('./routes/provider'));
+app.use('/api/provider/queries', require('./routes/providerQueries'));
 app.use('/api/customer', require('./routes/customer'));
 app.use('/api/complaints', require('./routes/complaints'));
 app.use('/api/upload', require('./routes/upload'));

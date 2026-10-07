@@ -18,6 +18,8 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminReports from './pages/admin/AdminReports';
 import AdminGrievances from './pages/admin/AdminGrievances';
+import AdminMessages from './pages/admin/AdminMessages';
+import AdminProviderQueries from './pages/admin/AdminProviderQueries';
 
 // Provider
 import ProviderLayout from './layouts/ProviderLayout';
@@ -27,6 +29,7 @@ import ProviderServices from './pages/provider/ProviderServices';
 import ProviderOrders from './pages/provider/ProviderOrders';
 import ProviderCoProviders from './pages/provider/ProviderCoProviders';
 import ProviderProfile from './pages/provider/ProviderProfile';
+import ProviderQueries from './pages/provider/ProviderQueries';
 
 // Customer
 import CustomerLayout from './layouts/CustomerLayout';
@@ -72,6 +75,8 @@ function AppRoutes() {
         <Route path="orders" element={<AdminOrders />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="grievances" element={<AdminGrievances />} />
+        <Route path="messages" element={<AdminMessages />} />
+        <Route path="provider-queries" element={<AdminProviderQueries />} />
       </Route>
 
       {/* Provider */}
@@ -82,6 +87,7 @@ function AppRoutes() {
         <Route path="orders" element={<ProviderOrders />} />
         <Route path="co-providers" element={<ProviderCoProviders />} />
         <Route path="profile" element={<ProviderProfile />} />
+        <Route path="queries" element={<ProviderQueries />} />
       </Route>
 
       {/* Customer */}
