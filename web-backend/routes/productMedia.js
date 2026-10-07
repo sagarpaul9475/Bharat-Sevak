@@ -40,10 +40,17 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024, files: 6 },
 });
 
-router.post('/product-media', verifyToken, upload.fields([
-  { name: 'images', maxCount: 5 },
-  { name: 'video', maxCount: 1 },
-]), async (req, res) => {
+const mediaUpload = (req, res, next) => {
+  upload.fields([
+    { name: 'images', maxCount: 5 },
+    { name: 'video', maxCount: 1 },
+  ])(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message || 'Invalid product media upload' });
+    next();
+  });
+};
+
+router.post('/product-media', verifyToken, mediaUpload, async (req, res) => {
   const files = [...(req.files?.images || []), ...(req.files?.video || [])];
   try {
     const images = req.files?.images || [];
