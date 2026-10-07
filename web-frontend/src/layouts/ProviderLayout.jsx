@@ -11,6 +11,7 @@ const navItems = [
   { to: '/provider/orders', icon: '🧾', label: 'Orders' },
   { to: '/provider/co-providers', icon: '🤝', label: 'Co-Providers' },
   { to: '/provider/profile', icon: '👤', label: 'Profile / KYC' },
+  { to: '/provider/queries', icon: '💬', label: 'Admin Support' },
 ];
 
 export default function ProviderLayout() {
