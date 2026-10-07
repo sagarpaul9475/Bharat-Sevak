@@ -25,6 +25,7 @@ app.use('/api/customer', require('./routes/customer'));
 app.use('/api/complaints', require('./routes/complaints'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Do not serve uploads as static files: identity and business documents must
 // only be accessible through the authenticated /api/upload/document endpoint.
