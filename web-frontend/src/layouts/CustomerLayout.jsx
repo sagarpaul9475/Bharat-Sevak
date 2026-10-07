@@ -1,4 +1,5 @@
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import NotificationBell from '../components/NotificationBell';
@@ -6,11 +7,37 @@ import NotificationBell from '../components/NotificationBell';
 export default function CustomerLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showScrollCue, setShowScrollCue] = useState(false);
+
   const handleLogout = () => { logout(); navigate('/'); toast.success('Logged out'); };
+
+  useEffect(() => {
+    if (location.pathname !== '/browse') {
+      setShowScrollCue(false);
+      return undefined;
+    }
+
+    const checkScrollable = () => {
+      const scrollable = document.documentElement.scrollHeight > window.innerHeight + 120;
+      setShowScrollCue(scrollable && window.scrollY < 100);
+    };
+
+    checkScrollable();
+    window.addEventListener('scroll', checkScrollable, { passive: true });
+    window.addEventListener('resize', checkScrollable);
+    return () => {
+      window.removeEventListener('scroll', checkScrollable);
+      window.removeEventListener('resize', checkScrollable);
+    };
+  }, [location.pathname]);
+
+  const scrollDown = () => {
+    window.scrollTo({ top: Math.min(window.scrollY + window.innerHeight * 0.7, document.documentElement.scrollHeight), behavior: 'smooth' });
+  };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Topbar */}
       <header style={{
         height: 'var(--topbar-height)', background: 'rgba(15,23,42,0.97)',
         backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--navy-border)',
@@ -24,7 +51,7 @@ export default function CustomerLayout({ children }) {
           }}>🇮🇳</div>
           <span style={{ fontFamily: 'Outfit,sans-serif', fontWeight: 800, fontSize: 18 }}>Bharat Sevak</span>
         </Link>
-        <nav style={{ display: 'flex', gap: 4, marginLeft: 24 }}>
+        <nav className="customer-nav">
           <Link to="/browse" className="btn btn-secondary btn-sm">🛍️ Browse</Link>
           {user && <Link to="/orders" className="btn btn-secondary btn-sm">🧾 My Orders</Link>}
           {user && <Link to="/grievance" className="btn btn-secondary btn-sm">📢 Grievance</Link>}
@@ -47,6 +74,13 @@ export default function CustomerLayout({ children }) {
           )}
         </div>
       </header>
+
+      {showScrollCue && (
+        <button type="button" className="customer-scroll-cue" onClick={scrollDown} aria-label="Scroll down for more">
+          <span>↓</span>
+        </button>
+      )}
+
       <main style={{ flex: 1, padding: '24px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
         {children}
       </main>
