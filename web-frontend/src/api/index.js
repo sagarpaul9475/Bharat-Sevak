@@ -61,6 +61,9 @@ export const providerAPI = {
   // Co-providers
   getCoProviders: () => API.get('/provider/co-providers'),
   updateProfile: (data) => API.put('/provider/profile', data),
+  // Provider support queries
+  getQueries: () => API.get('/provider/queries/mine'),
+  createQuery: (data) => API.post('/provider/queries', data),
 };
 
 // Admin
@@ -95,6 +98,13 @@ export const adminAPI = {
   // Reports
   getSalesReport: () => API.get('/admin/reports/sales'),
   getProviderReport: () => API.get('/admin/reports/providers'),
+  // Admin messaging
+  getMessageRecipients: (params) => API.get('/admin/message-recipients', { params }),
+  sendMessage: (data) => API.post('/admin/messages', data),
+  getMessageHistory: (params) => API.get('/admin/messages', { params }),
+  // Provider queries
+  getProviderQueries: (params) => API.get('/provider/queries/admin', { params }),
+  updateProviderQuery: (id, data) => API.put('/provider/queries/admin/' + id, data),
 };
 
 // In-app notifications
