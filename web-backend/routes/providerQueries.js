@@ -93,11 +93,14 @@ router.put('/admin/:id', adminGuard, async (req, res) => {
     const query = await ProviderQuery.findById(req.params.id).populate('provider', 'name businessName email').exec();
     if (!query) return res.status(404).json({ message: 'Provider query not found' });
 
+    const previousStatus = query.status;
     query.status = status;
     if (adminReply !== undefined) {
       query.adminReply = String(adminReply).trim().slice(0, 5000);
       query.repliedAt = query.adminReply ? new Date() : null;
     }
+
+    const shouldNotifyProvider = Boolean(query.provider?._id && (query.adminReply || previousStatus !== status));
 
     if (query.provider?.email && query.adminReply) {
       try {
@@ -119,12 +122,17 @@ router.put('/admin/:id', adminGuard, async (req, res) => {
         console.error('Provider query reply email failed:', error.message);
       }
 
+    }
+
+    if (shouldNotifyProvider) {
       await notifyUser(query.provider._id, {
-        title: 'Admin replied to your query',
-        message: 'Your provider query "' + query.subject + '" has a response from admin.',
+        title: query.adminReply ? 'Admin replied to your query' : 'Provider query status updated',
+        message: query.adminReply
+          ? 'Your provider query "' + query.subject + '" has a response from admin.'
+          : 'Your provider query "' + query.subject + '" is now ' + query.status.replace('_', ' ') + '.',
         type: 'grievance',
         link: '/provider/queries',
-        metadata: { queryId: String(query._id), queryCode: query.queryId },
+        metadata: { queryId: String(query._id), queryCode: query.queryId, status: query.status },
       });
     }
 
