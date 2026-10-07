@@ -12,6 +12,8 @@ const navItems = [
   { to: '/admin/users', icon: '👥', label: 'Users' },
   { to: '/admin/orders', icon: '🧾', label: 'All Orders' },
   { to: '/admin/grievances', icon: '📢', label: 'Grievances' },
+  { to: '/admin/messages', icon: '📣', label: 'Messaging' },
+  { to: '/admin/provider-queries', icon: '📨', label: 'Provider Queries' },
   { to: '/admin/reports', icon: '📊', label: 'Reports' },
 ];
 
