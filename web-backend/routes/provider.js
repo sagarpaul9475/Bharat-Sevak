@@ -11,12 +11,23 @@ const providerGuard = [verifyToken, requireRole('provider', 'admin')];
 
 const validateProductMedia = (req, images, videoUrl) => {
   const ownerPrefix = '/uploads/products/' + String(req.user._id) + '/';
+  const expectedOrigin = req.protocol + '://' + req.get('host');
+  const isOwnedMediaUrl = (value) => {
+    if (typeof value !== 'string' || !value) return false;
+    try {
+      const parsed = new URL(value, expectedOrigin);
+      return parsed.origin === expectedOrigin && parsed.pathname.startsWith(ownerPrefix);
+    } catch {
+      return false;
+    }
+  };
+
   const safeImages = Array.isArray(images) ? images : [];
   if (safeImages.length > 5) throw new Error('Maximum 5 product images are allowed');
-  if (safeImages.some(url => typeof url !== 'string' || !url.includes(ownerPrefix))) {
+  if (safeImages.some(url => !isOwnedMediaUrl(url))) {
     throw new Error('Product images must come from the authenticated product media upload');
   }
-  if (videoUrl && (typeof videoUrl !== 'string' || !videoUrl.includes(ownerPrefix))) {
+  if (videoUrl && !isOwnedMediaUrl(videoUrl)) {
     throw new Error('Product video must come from the authenticated product media upload');
   }
   return { images: safeImages, videoUrl: videoUrl || '' };
