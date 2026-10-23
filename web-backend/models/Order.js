@@ -17,7 +17,7 @@ const orderSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'rejected'],
+    enum: ['pending', 'confirmed', 'assigned', 'out_for_delivery', 'in_progress', 'completed', 'cancelled', 'rejected'],
     default: 'pending'
   },
   paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
@@ -31,6 +31,45 @@ const orderSchema = new mongoose.Schema({
   razorpayTransferId: { type: String, default: '' },
   providerPayoutStatus: { type: String, enum: ['not_applicable', 'pending_onboarding', 'pending_configuration', 'pending', 'transferred', 'failed'], default: 'not_applicable' },
   deliveryAddress: { type: String, default: '' },
+  orderType: { type: String, enum: ['product', 'service', 'mixed'], default: 'product' },
+  // Secure Completion / Delivery OTP
+  deliveryOtp: { type: String, default: '' },
+  otpVerified: { type: Boolean, default: false },
+  otpVerifiedAt: { type: Date },
+  // Assignment to Delivery Partner or Field Service Technician
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assignedRole: { type: String, enum: ['delivery_man', 'technician', 'provider', 'self'], default: 'delivery_man' },
+  assignedName: { type: String, default: '' },
+  assignedPhone: { type: String, default: '' },
+  fulfillmentStatus: {
+    type: String,
+    enum: ['unassigned', 'assigned', 'en_route', 'arrived', 'in_progress', 'completed', 'cancelled'],
+    default: 'unassigned'
+  },
+  // Geographical locations for live tracking
+  pickupLocation: {
+    address: { type: String, default: '' },
+    lat: { type: Number, default: 22.5726 },
+    lng: { type: Number, default: 88.3639 },
+  },
+  dropoffLocation: {
+    address: { type: String, default: '' },
+    lat: { type: Number, default: 22.5850 },
+    lng: { type: Number, default: 88.3750 },
+  },
+  liveLocation: {
+    lat: { type: Number, default: 22.5726 },
+    lng: { type: Number, default: 88.3639 },
+    heading: { type: Number, default: 0 },
+    speed: { type: Number, default: 0 },
+    updatedAt: { type: Date, default: Date.now },
+    isLive: { type: Boolean, default: false },
+  },
+  locationHistory: [{
+    lat: Number,
+    lng: Number,
+    timestamp: { type: Date, default: Date.now }
+  }],
   notes: { type: String, default: '' },
   adminNotified: { type: Boolean, default: false },
   statusHistory: [{
@@ -41,11 +80,14 @@ const orderSchema = new mongoose.Schema({
   }],
 }, { timestamps: true });
 
-// Auto-generate orderId
+// Auto-generate orderId and deliveryOtp
 orderSchema.pre('save', async function (next) {
   if (!this.orderId) {
     const count = await mongoose.model('Order').countDocuments();
     this.orderId = `BS-${String(count + 1).padStart(6, '0')}`;
+  }
+  if (!this.deliveryOtp) {
+    this.deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
   }
   next();
 });

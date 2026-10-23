@@ -102,6 +102,19 @@ router.post('/orders', verifyToken, async (req, res) => {
     const totalAmount = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
     const allowedPaymentMethods = ['cash', 'qr', 'online'];
     const selectedPaymentMethod = allowedPaymentMethods.includes(paymentMethod) ? paymentMethod : 'cash';
+    const hasService = orderItems.some(i => i.itemType === 'service');
+    const hasProduct = orderItems.some(i => i.itemType === 'product');
+    const orderType = (hasService && hasProduct) ? 'mixed' : hasService ? 'service' : 'product';
+    const providerUser = await User.findById(providerId);
+
+    // Initial coordinates (with subtle deterministic delta based on order count so points are distinct on map)
+    const baseLat = 22.5726;
+    const baseLng = 88.3639;
+    const randOffsetLat = ((Math.random() - 0.5) * 0.03);
+    const randOffsetLng = ((Math.random() - 0.5) * 0.03);
+    const dropLat = baseLat + randOffsetLat + 0.015;
+    const dropLng = baseLng + randOffsetLng + 0.018;
+
     const order = await Order.create({
       customer: req.user._id,
       provider: providerId,
@@ -110,6 +123,26 @@ router.post('/orders', verifyToken, async (req, res) => {
       paymentMethod: selectedPaymentMethod,
       deliveryAddress,
       notes,
+      orderType,
+      deliveryOtp: String(Math.floor(1000 + Math.random() * 9000)),
+      pickupLocation: {
+        address: providerUser?.businessName || providerUser?.address || 'Provider Facility',
+        lat: baseLat,
+        lng: baseLng,
+      },
+      dropoffLocation: {
+        address: deliveryAddress || req.user.address || 'Customer Destination',
+        lat: dropLat,
+        lng: dropLng,
+      },
+      liveLocation: {
+        lat: baseLat,
+        lng: baseLng,
+        heading: 35,
+        speed: 0,
+        isLive: false,
+        updatedAt: new Date(),
+      },
       statusHistory: [{ status: 'pending', changedBy: req.user._id }]
     });
     await Promise.all([
@@ -138,7 +171,10 @@ router.get('/orders', verifyToken, async (req, res) => {
     const { status, page = 1, limit = 10 } = req.query;
     const filter = { customer: req.user._id };
     if (status) filter.status = status;
-    const orders = await Order.find(filter).populate('provider', 'name businessName').sort('-createdAt')
+    const orders = await Order.find(filter)
+      .populate('provider', 'name businessName phone address')
+      .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization')
+      .sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));
     const total = await Order.countDocuments(filter);
     res.json({ orders, total, pages: Math.ceil(total / limit) });
@@ -148,7 +184,8 @@ router.get('/orders', verifyToken, async (req, res) => {
 router.get('/orders/:id', verifyToken, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
-      .populate('provider', 'name businessName phone');
+      .populate('provider', 'name businessName phone address')
+      .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization');
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) { res.status(500).json({ message: err.message }); }

@@ -139,4 +139,15 @@ export const uploadAPI = {
   myDocs: () => API.get('/upload/my-docs'),
 };
 
+// Delivery, Live Tracking & OTP Verification
+export const deliveryAPI = {
+  getWorkers: (params) => API.get('/delivery/workers', { params }),
+  getTasks: () => API.get('/delivery/tasks'),
+  trackOrder: (id) => API.get(`/delivery/orders/${id}/track`),
+  assignWorker: (id, data) => API.put(`/delivery/orders/${id}/assign`, data),
+  updateStatus: (id, data) => API.put(`/delivery/orders/${id}/status`, data),
+  updateLocation: (id, data) => API.put(`/delivery/orders/${id}/location`, data),
+  verifyOtp: (id, data) => API.post(`/delivery/orders/${id}/verify-otp`, data),
+};
+
 export default API;

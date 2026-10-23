@@ -1,20 +1,62 @@
 import { useEffect, useState } from 'react';
 import { customerAPI, paymentAPI } from '../../api';
+import { useAuth } from '../../context/AuthContext';
+import LiveTrackingModal from '../../components/LiveTrackingModal';
+import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 
 export default function CustomerOrders() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTrackingId, setActiveTrackingId] = useState(null);
 
   const load = () => {
     setLoading(true);
-    customerAPI.getOrders().then(r => setOrders(r.data.orders)).catch(() => toast.error('Failed to load orders')).finally(() => setLoading(false));
+    customerAPI.getOrders()
+      .then(r => setOrders(r.data.orders))
+      .catch(() => toast.error('Failed to load orders'))
+      .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    load();
+
+    // Socket listener for real-time status updates
+    if (user?._id) {
+      const socket = io('http://localhost:4000', { transports: ['websocket', 'polling'] });
+      socket.on('connect', () => {
+        socket.emit('join', user._id);
+      });
+
+      socket.on('order:completed', () => {
+        toast.success('🎉 Your order was successfully completed & confirmed via OTP!');
+        load();
+      });
+
+      socket.on('order:status_update', () => {
+        load();
+      });
+
+      socket.on('order:updated', () => {
+        load();
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [user?._id]);
 
   const cancelOrder = async (id) => {
     if (!confirm('Cancel this order?')) return;
-    try { await customerAPI.cancelOrder(id); toast.success('Order cancelled'); load(); } catch { toast.error('Failed to cancel'); }
+    try {
+      await customerAPI.cancelOrder(id);
+      toast.success('Order cancelled');
+      load();
+    } catch {
+      toast.error('Failed to cancel');
+    }
   };
 
   const payNow = async (order) => {
@@ -27,7 +69,7 @@ export default function CustomerOrders() {
         document.body.appendChild(script);
         await new Promise((resolve, reject) => {
           script.onload = resolve;
-          script.onerror = () => reject(new Error('Could not load the payment window. Check your internet connection.'));
+          script.onerror = () => reject(new Error('Could not load payment gateway'));
         });
       }
       const checkout = new window.Razorpay({
@@ -42,12 +84,12 @@ export default function CustomerOrders() {
             await paymentAPI.verifyOrder(order._id, response);
             toast.success('Payment verified successfully!');
           } catch (error) {
-            toast.error(error.response?.data?.message || 'Payment verification is pending. Contact support before retrying.');
+            toast.error(error.response?.data?.message || 'Payment verification failed');
           } finally {
             load();
           }
         },
-        modal: { ondismiss: () => toast('Payment window closed. You can retry when ready.') },
+        modal: { ondismiss: () => toast('Payment window closed') },
         theme: { color: '#F59E0B' }
       });
       checkout.on('payment.failed', (response) => toast.error(response.error?.description || 'Payment failed'));
@@ -60,7 +102,7 @@ export default function CustomerOrders() {
   const getStatusColor = (s) => {
     switch (s) {
       case 'pending': return 'var(--pending)';
-      case 'confirmed': case 'in_progress': return 'var(--active)';
+      case 'confirmed': case 'assigned': case 'out_for_delivery': case 'in_progress': return '#3B82F6';
       case 'completed': return 'var(--emerald)';
       case 'cancelled': case 'rejected': return 'var(--rejected)';
       default: return 'var(--text-muted)';
@@ -71,69 +113,190 @@ export default function CustomerOrders() {
     <div className="animate-fade">
       <div className="page-header">
         <div>
-          <h1 className="page-title">🧾 My Orders</h1>
-          <p className="page-subtitle">Track your purchases and service requests</p>
+          <h1 className="page-title">🧾 My Orders & Service Bookings</h1>
+          <p className="page-subtitle">Track your delivery in real-time and provide OTP upon arrival</p>
         </div>
       </div>
 
-      {loading ? <div className="loading-center"><div className="spinner" /></div> : (
-        orders.length === 0 ? <div className="empty-state"><div className="empty-icon">🧾</div><div className="empty-title">You haven't ordered anything yet</div></div> :
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {orders.map(o => (
-            <div key={o._id} className="card" style={{ borderLeft: `4px solid ${getStatusColor(o.status)}` }}>
-              <div className="flex justify-between items-start mb-4 border-b border-navy-border pb-4">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="font-bold text-lg">Order #{o.orderId}</h3>
-                    <span className={`badge badge-${o.status === 'in_progress' ? 'confirmed' : o.status === 'cancelled' ? 'rejected' : o.status}`}>{o.status.replace('_', ' ')}</span>
-                  </div>
-                  <div className="text-sm text-muted">Placed on {new Date(o.createdAt).toLocaleString()}</div>
-                </div>
-                <div className="text-right">
-                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--saffron)' }}>₹{o.totalAmount}</div>
-                  <div className={`text-xs font-bold text-${o.paymentStatus === 'paid' ? 'emerald' : 'pending'}`}>{o.paymentStatus.toUpperCase()}</div>
-                </div>
-              </div>
-
-              <div className="grid-2 mb-4" style={{ gap: 24 }}>
-                <div>
-                  <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Provider Details</div>
-                  <div className="font-bold flex items-center gap-2">
-                    <div className="avatar" style={{ width: 24, height: 24, fontSize: 10 }}>{o.provider?.businessName?.[0] || o.provider?.name?.[0]}</div>
-                    {o.provider?.businessName || o.provider?.name}
-                  </div>
-                  <div className="text-sm mt-2 text-muted">A representative will contact you shortly if needed.</div>
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Order Items</div>
-                  <div className="bg-navy p-3 rounded border border-navy-border">
-                    {o.items.map((i, idx) => (
-                      <div key={idx} className="flex justify-between text-sm mb-1">
-                        <span>{i.quantity}x {i.itemName}</span>
-                        <span className="font-medium">₹{i.subtotal}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Delivery and Actions */}
-              <div className="flex justify-between items-center bg-navy p-4 rounded mt-4 border border-navy-border">
-                <div className="text-sm">
-                  <span className="font-bold text-muted uppercase mr-2">Delivery To:</span> {o.deliveryAddress || 'Default Address'}
-                </div>
-                <div className="flex items-center gap-2">
-                  {o.paymentMethod === 'online' && o.paymentStatus !== 'paid' && !['cancelled', 'rejected'].includes(o.status) && (
-                    <button className="btn btn-primary btn-sm" onClick={() => payNow(o)}>Pay now</button>
-                  )}
-                  {(o.status === 'pending' || o.status === 'confirmed') && (
-                    <button className="btn btn-danger btn-sm" onClick={() => cancelOrder(o._id)}>Cancel Order</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+      {loading ? (
+        <div className="loading-center"><div className="spinner" /></div>
+      ) : orders.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🧾</div>
+          <div className="empty-title">You haven't ordered anything yet</div>
         </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {orders.map(o => {
+            const isService = o.orderType === 'service';
+            const isCompleted = o.status === 'completed';
+            const isCancelled = o.status === 'cancelled' || o.status === 'rejected';
+
+            return (
+              <div key={o._id} className="card" style={{ borderLeft: `5px solid ${getStatusColor(o.status)}`, position: 'relative' }}>
+                
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4 border-b border-navy-border pb-4 flex-wrap gap-2">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span style={{ fontSize: 20 }}>{isService ? '🔧' : '🛵'}</span>
+                      <h3 className="font-bold text-lg">Order #{o.orderId}</h3>
+                      <span className={`badge badge-${o.status === 'completed' ? 'completed' : o.status === 'out_for_delivery' || o.status === 'in_progress' ? 'confirmed' : o.status === 'cancelled' ? 'rejected' : o.status}`}>
+                        {o.status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted">
+                      Placed on {new Date(o.createdAt).toLocaleString()} • {isService ? 'Service Booking' : 'Product Order'}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--saffron)' }}>₹{o.totalAmount}</div>
+                    <div className={`text-xs font-bold text-${o.paymentStatus === 'paid' ? 'emerald' : 'pending'}`}>
+                      {o.paymentStatus.toUpperCase()} ({o.paymentMethod.toUpperCase()})
+                    </div>
+                  </div>
+                </div>
+
+                {/* PROMINENT SECRET OTP CARD FOR CUSTOMER */}
+                {!isCancelled && (
+                  <div style={{
+                    background: isCompleted
+                      ? 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))'
+                      : 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.05))',
+                    border: `2px solid ${isCompleted ? '#10B981' : '#F59E0B'}`,
+                    borderRadius: 10,
+                    padding: '12px 18px',
+                    marginBottom: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 12
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 28 }}>{isCompleted ? '✅' : '🔐'}</span>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: isCompleted ? '#10B981' : '#F59E0B' }}>
+                          {isCompleted ? 'Delivery & Service Confirmed' : 'Customer Verification OTP'}
+                        </div>
+                        <div style={{ fontSize: 13, color: '#CBD5E1', marginTop: 1 }}>
+                          {isCompleted
+                            ? `Verified via Customer OTP on ${new Date(o.otpVerifiedAt || o.updatedAt).toLocaleTimeString()}`
+                            : 'Give this OTP to the delivery agent or service technician ONLY after receiving goods or work is done.'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      {isCompleted ? (
+                        <span className="badge badge-completed" style={{ fontSize: 12, padding: '6px 12px' }}>
+                          ✅ VERIFIED
+                        </span>
+                      ) : (
+                        <div style={{
+                          background: '#0F172A',
+                          border: '2px dashed #F59E0B',
+                          padding: '6px 16px',
+                          borderRadius: 8,
+                          fontSize: 24,
+                          fontWeight: 900,
+                          letterSpacing: 4,
+                          color: '#F59E0B',
+                          fontFamily: 'monospace'
+                        }}>
+                          {o.deliveryOtp || '----'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Details Grid */}
+                <div className="grid-2 mb-4" style={{ gap: 20 }}>
+                  <div>
+                    <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Provider Details</div>
+                    <div className="font-bold flex items-center gap-2">
+                      <div className="avatar" style={{ width: 28, height: 28, fontSize: 12 }}>
+                        {o.provider?.businessName?.[0] || o.provider?.name?.[0]}
+                      </div>
+                      <div>
+                        <div>{o.provider?.businessName || o.provider?.name}</div>
+                        {o.provider?.phone && (
+                          <div className="text-xs text-muted">📞 {o.provider?.phone}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Assigned Worker Info */}
+                    {o.assignedTo || o.assignedName ? (
+                      <div className="mt-3 p-2 rounded bg-navy border border-navy-border text-xs">
+                        <span className="font-bold text-saffron">
+                          {isService ? '🔧 Assigned Technician:' : '🛵 Assigned Delivery Partner:'}
+                        </span>{' '}
+                        {o.assignedName || o.assignedTo?.name}
+                        {o.assignedPhone && <span> (📞 {o.assignedPhone})</span>}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Order Items</div>
+                    <div className="bg-navy p-3 rounded border border-navy-border">
+                      {o.items.map((i, idx) => (
+                        <div key={idx} className="flex justify-between text-sm mb-1">
+                          <span>{i.quantity}x {i.itemName}</span>
+                          <span className="font-medium">₹{i.subtotal}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delivery and Actions */}
+                <div className="flex justify-between items-center bg-navy p-4 rounded mt-4 border border-navy-border flex-wrap gap-3">
+                  <div className="text-sm">
+                    <span className="font-bold text-muted uppercase mr-2">Destination:</span>
+                    {o.deliveryAddress || 'Default Address'}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Live GPS Track Button */}
+                    {!isCancelled && (
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                        onClick={() => setActiveTrackingId(o._id)}
+                      >
+                        <span>📍</span> Track Live Map
+                      </button>
+                    )}
+
+                    {o.paymentMethod === 'online' && o.paymentStatus !== 'paid' && !isCancelled && (
+                      <button className="btn btn-success btn-sm" onClick={() => payNow(o)}>
+                        💳 Pay Now
+                      </button>
+                    )}
+
+                    {(o.status === 'pending' || o.status === 'confirmed') && (
+                      <button className="btn btn-danger btn-sm" onClick={() => cancelOrder(o._id)}>
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Live Tracking Modal */}
+      {activeTrackingId && (
+        <LiveTrackingModal
+          orderId={activeTrackingId}
+          onClose={() => setActiveTrackingId(null)}
+          onOrderUpdated={load}
+        />
       )}
     </div>
   );

@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   phone: { type: String, required: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['customer', 'provider', 'admin'], default: 'customer' },
+  role: { type: String, enum: ['customer', 'provider', 'admin', 'delivery'], default: 'customer' },
   status: { type: String, enum: ['pending', 'approved', 'rejected', 'active'], default: 'active' },
   profilePic: { type: String, default: '' },
   address: { type: String, default: '' },
@@ -13,6 +13,15 @@ const userSchema = new mongoose.Schema({
     state: { type: String, default: '' },
     district: { type: String, default: '' },
     area: { type: String, default: '' },
+  },
+  // Delivery Partner / Service Technician fields
+  deliveryVehicleType: { type: String, enum: ['bike', 'bicycle', 'scooter', 'van', 'on_foot', 'other'], default: 'bike' },
+  serviceSpecialization: { type: String, default: '' }, // e.g. "Delivery Partner", "Electrician", "Plumber", "Sweeper"
+  isAvailable: { type: Boolean, default: true },
+  currentLocation: {
+    lat: { type: Number, default: 22.5726 },
+    lng: { type: Number, default: 88.3639 },
+    updatedAt: { type: Date, default: Date.now },
   },
   // Provider-specific fields
   providerType: { type: String, enum: ['product', 'service', 'both'], default: 'product' },

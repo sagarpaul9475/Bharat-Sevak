@@ -30,6 +30,7 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api/upload', require('./routes/productMedia'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/delivery', require('./routes/delivery'));
 
 // Product media is intentionally public because approved marketplace listings need browser-accessible images/video.
 // KYC and business documents remain private and are never served statically.
@@ -38,12 +39,28 @@ app.use('/uploads/products', express.static(path.join(__dirname, 'uploads', 'pro
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
-// Socket.io for real-time notifications
+// Socket.io for real-time notifications and live order/delivery tracking
 io.on('connection', (socket) => {
   socket.on('join', (userId) => {
-    socket.join(userId);
+    socket.join(String(userId));
     console.log(`User ${userId} joined socket room`);
   });
+
+  socket.on('join_order', (orderId) => {
+    socket.join(`order_${orderId}`);
+    console.log(`Socket joined order room: order_${orderId}`);
+  });
+
+  socket.on('leave_order', (orderId) => {
+    socket.leave(`order_${orderId}`);
+  });
+
+  socket.on('update_location', (data) => {
+    if (data?.orderId) {
+      socket.to(`order_${data.orderId}`).emit('order:location_update', data);
+    }
+  });
+
   socket.on('disconnect', () => console.log('Socket disconnected'));
 });
 app.set('io', io);

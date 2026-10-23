@@ -298,7 +298,7 @@ export default function CustomerBrowse() {
 
       {showCart && (
         <div className="modal-overlay" style={{ justifyContent: 'flex-end', padding: 0 }} onClick={(e) => e.target.classList.contains('modal-overlay') && setShowCart(false)}>
-          <div className="modal-box" style={{ width: 400, height: '100vh', borderRadius: 0, margin: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="modal-box" style={{ width: 'min(420px, 100vw)', height: '100vh', borderRadius: 0, margin: 0, display: 'flex', flexDirection: 'column' }}>
             <div className="modal-head"><h2>🛒 Your Cart</h2><button className="btn-icon btn-secondary" onClick={() => setShowCart(false)}>✕</button></div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>

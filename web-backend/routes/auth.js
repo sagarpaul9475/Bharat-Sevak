@@ -27,6 +27,10 @@ router.post('/register', async (req, res) => {
       userData.isVerified = false;
       userData.canActAsCustomer = true; // Dual role
       userData.activeRole = 'provider';
+    } else if (role === 'delivery') {
+      userData.deliveryVehicleType = req.body.deliveryVehicleType || 'bike';
+      userData.serviceSpecialization = req.body.serviceSpecialization || 'Delivery Partner';
+      userData.status = 'active';
     }
     const user = await User.create(userData);
     const token = generateToken(user._id);

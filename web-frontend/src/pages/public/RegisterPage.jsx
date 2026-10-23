@@ -10,7 +10,19 @@ export default function RegisterPage() {
   const defaultRole = params.get('role') || 'customer';
 
   const [role, setRole] = useState(defaultRole);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', businessName: '', providerType: 'product', state: '', district: '', area: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    businessName: '',
+    providerType: 'product',
+    deliveryVehicleType: 'bike',
+    serviceSpecialization: 'Delivery Partner',
+    state: '',
+    district: '',
+    area: ''
+  });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -18,44 +30,90 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const payload = {
-        name: form.name, email: form.email, phone: form.phone, password: form.password, role,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        role,
         region: { state: form.state, district: form.district, area: form.area },
       };
-      if (role === 'provider') { payload.businessName = form.businessName; payload.providerType = form.providerType; }
+      if (role === 'provider') {
+        payload.businessName = form.businessName;
+        payload.providerType = form.providerType;
+      } else if (role === 'delivery') {
+        payload.deliveryVehicleType = form.deliveryVehicleType;
+        payload.serviceSpecialization = form.serviceSpecialization;
+      }
+
       const user = await register(payload);
       if (role === 'provider') {
         toast.success('Registration submitted! Awaiting admin approval.');
         navigate('/login');
+      } else if (role === 'delivery') {
+        toast.success(`Welcome to the Delivery & Service fleet, ${user.name}!`);
+        navigate('/delivery');
       } else {
         toast.success(`Welcome, ${user.name}!`);
         navigate('/browse');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#0F172A,#1E293B)', padding: 20, position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', bottom: '-20%', left: '-10%', width: 400, height: 400, background: 'radial-gradient(circle,rgba(16,185,129,0.08) 0%,transparent 70%)', pointerEvents: 'none' }} />
-      <div style={{ width: '100%', maxWidth: 520 }} className="animate-slide-up">
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+      <div style={{ width: '100%', maxWidth: 540 }} className="animate-slide-up">
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg,#FF6B00,#CC5500)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, margin: '0 auto 12px' }}>🇮🇳</div>
           <h1 style={{ fontSize: 26 }}>Join Bharat Sevak</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>Create your account and start today</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>
+            Empowering customers, shops, delivery partners & service professionals
+          </p>
         </div>
 
         <div className="card">
           {/* Role Toggle */}
           <div style={{ marginBottom: 20 }}>
-            <div className="form-label" style={{ marginBottom: 8 }}>I want to join as:</div>
-            <div className="tabs" style={{ width: '100%' }}>
-              <button type="button" className={`tab-btn ${role === 'customer' ? 'active' : ''}`} style={{ flex: 1 }} onClick={() => setRole('customer')}>🛒 Customer</button>
-              <button type="button" className={`tab-btn ${role === 'provider' ? 'active' : ''}`} style={{ flex: 1 }} onClick={() => setRole('provider')}>🏪 Provider</button>
+            <div className="form-label" style={{ marginBottom: 8 }}>I want to register as:</div>
+            <div className="tabs" style={{ width: '100%', gap: 4 }}>
+              <button
+                type="button"
+                className={`tab-btn ${role === 'customer' ? 'active' : ''}`}
+                style={{ flex: 1, padding: '8px 10px', fontSize: 12 }}
+                onClick={() => setRole('customer')}
+              >
+                🛒 Customer
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${role === 'provider' ? 'active' : ''}`}
+                style={{ flex: 1, padding: '8px 10px', fontSize: 12 }}
+                onClick={() => setRole('provider')}
+              >
+                🏪 Provider / Shop
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${role === 'delivery' ? 'active' : ''}`}
+                style={{ flex: 1, padding: '8px 10px', fontSize: 12 }}
+                onClick={() => setRole('delivery')}
+              >
+                🛵 Delivery / Tech
+              </button>
             </div>
+
             {role === 'provider' && (
               <div style={{ marginTop: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#F59E0B' }}>
                 ⚠️ Provider accounts need admin verification before you can start selling
+              </div>
+            )}
+            {role === 'delivery' && (
+              <div style={{ marginTop: 10, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#38BDF8' }}>
+                🛵 Fulfill product deliveries or on-site service jobs (Electrician, Plumber, etc.) with Live GPS tracking and OTP verification!
               </div>
             )}
           </div>
@@ -96,6 +154,42 @@ export default function RegisterPage() {
                 </>
               )}
 
+              {role === 'delivery' && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Specialization / Job Type *</label>
+                    <select
+                      className="form-select"
+                      value={form.serviceSpecialization}
+                      onChange={e => setForm(f => ({ ...f, serviceSpecialization: e.target.value }))}
+                    >
+                      <option value="Delivery Partner">🛵 Delivery Partner (Orders)</option>
+                      <option value="Electrician">🔧 Electrician (Services)</option>
+                      <option value="Plumber">🚰 Plumber (Services)</option>
+                      <option value="Sweeper / Cleaner">🧹 Sweeper / Cleaner</option>
+                      <option value="Home Tutor">📚 Home Tutor</option>
+                      <option value="General Technician">🛠️ General Field Technician</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Vehicle Type *</label>
+                    <select
+                      className="form-select"
+                      value={form.deliveryVehicleType}
+                      onChange={e => setForm(f => ({ ...f, deliveryVehicleType: e.target.value }))}
+                    >
+                      <option value="bike">🏍️ Motorcycle / Bike</option>
+                      <option value="scooter">🛵 Scooter</option>
+                      <option value="bicycle">🚲 Bicycle</option>
+                      <option value="van">🚐 Van / Auto</option>
+                      <option value="on_foot">🚶 On Foot</option>
+                      <option value="other">🚗 Other</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
               <div className="form-group">
                 <label className="form-label">State</label>
                 <input className="form-input" placeholder="e.g. West Bengal" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
@@ -111,7 +205,7 @@ export default function RegisterPage() {
             </div>
 
             <button type="submit" className="btn btn-primary w-full" style={{ padding: '13px', fontSize: 15, marginTop: 16 }} disabled={loading}>
-              {loading ? '⏳ Creating account...' : `✅ Register as ${role === 'customer' ? 'Customer' : 'Provider'}`}
+              {loading ? '⏳ Creating account...' : `✅ Register as ${role === 'customer' ? 'Customer' : role === 'provider' ? 'Provider' : 'Delivery & Tech Partner'}`}
             </button>
           </form>
 

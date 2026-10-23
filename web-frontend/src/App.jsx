@@ -39,6 +39,9 @@ import CustomerOrders from './pages/customer/CustomerOrders';
 import CustomerProfile from './pages/customer/CustomerProfile';
 import CustomerGrievance from './pages/customer/CustomerGrievance';
 
+// Delivery & Field Technician
+import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
+
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
@@ -53,6 +56,7 @@ function PublicRoute({ children }) {
   if (user) {
     if (user.role === 'admin') return <Navigate to="/admin" replace />;
     if (user.role === 'provider') return <Navigate to="/provider" replace />;
+    if (user.role === 'delivery') return <Navigate to="/delivery" replace />;
     return <Navigate to="/browse" replace />;
   }
   return children;
@@ -96,6 +100,13 @@ function AppRoutes() {
       <Route path="/orders" element={<ProtectedRoute><CustomerLayout><CustomerOrders /></CustomerLayout></ProtectedRoute>} />
       <Route path="/grievance" element={<ProtectedRoute><CustomerLayout><CustomerGrievance /></CustomerLayout></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><CustomerLayout><CustomerProfile /></CustomerLayout></ProtectedRoute>} />
+
+      {/* Delivery & Field Technician Console */}
+      <Route path="/delivery" element={
+        <ProtectedRoute roles={['delivery', 'provider', 'admin']}>
+          <CustomerLayout><DeliveryDashboard /></CustomerLayout>
+        </ProtectedRoute>
+      } />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
