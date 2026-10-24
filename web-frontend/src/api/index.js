@@ -40,6 +40,9 @@ export const customerAPI = {
   getOrder: (id) => API.get(`/customer/orders/${id}`),
   cancelOrder: (id) => API.post(`/customer/orders/${id}/cancel`),
   updateProfile: (data) => API.put('/customer/profile', data),
+  // UPI / QR payment (post-delivery)
+  getPaymentInfo: (id) => API.get(`/customer/orders/${id}/payment-info`),
+  submitPayment: (id, data) => API.post(`/customer/orders/${id}/submit-payment`, data),
 };
 
 // Provider
@@ -58,9 +61,14 @@ export const providerAPI = {
   // Orders
   getOrders: (params) => API.get('/provider/orders', { params }),
   updateOrderStatus: (id, data) => API.put(`/provider/orders/${id}/status`, data),
+  getOrderPaymentInfo: (id) => API.get(`/provider/orders/${id}/payment-info`),
+  confirmPayment: (id, data) => API.put(`/provider/orders/${id}/confirm-payment`, data),
   // Co-providers
   getCoProviders: () => API.get('/provider/co-providers'),
   updateProfile: (data) => API.put('/provider/profile', data),
+  // Bank & UPI details
+  getBankDetails: () => API.get('/provider/bank-details'),
+  saveBankDetails: (data) => API.put('/provider/bank-details', data),
   // Provider support queries
   getQueries: () => API.get('/provider/queries/mine'),
   createQuery: (data) => API.post('/provider/queries', data),

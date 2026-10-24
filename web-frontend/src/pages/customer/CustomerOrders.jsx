@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { customerAPI, paymentAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import LiveTrackingModal from '../../components/LiveTrackingModal';
+import UpiPaymentModal from '../../components/UpiPaymentModal';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 
@@ -10,6 +11,7 @@ export default function CustomerOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTrackingId, setActiveTrackingId] = useState(null);
+  const [upiPayOrder, setUpiPayOrder] = useState(null); // order for UPI payment modal
 
   const load = () => {
     setLoading(true);
@@ -222,19 +224,31 @@ export default function CustomerOrders() {
                       <div>
                         <div>{o.provider?.businessName || o.provider?.name}</div>
                         {o.provider?.phone && (
-                          <div className="text-xs text-muted">📞 {o.provider?.phone}</div>
+                          <a
+                            href={`tel:${o.provider.phone}`}
+                            style={{ fontSize: 12, color: '#F59E0B', textDecoration: 'none' }}
+                          >
+                            📞 {o.provider.phone}
+                          </a>
                         )}
                       </div>
                     </div>
 
-                    {/* Assigned Worker Info */}
+                    {/* Assigned Worker with clickable phone */}
                     {o.assignedTo || o.assignedName ? (
                       <div className="mt-3 p-2 rounded bg-navy border border-navy-border text-xs">
                         <span className="font-bold text-saffron">
                           {isService ? '🔧 Assigned Technician:' : '🛵 Assigned Delivery Partner:'}
                         </span>{' '}
                         {o.assignedName || o.assignedTo?.name}
-                        {o.assignedPhone && <span> (📞 {o.assignedPhone})</span>}
+                        {(o.assignedPhone || o.assignedTo?.phone) && (
+                          <a
+                            href={`tel:${o.assignedPhone || o.assignedTo?.phone}`}
+                            style={{ color: '#F59E0B', textDecoration: 'none', marginLeft: 4 }}
+                          >
+                            📞 {o.assignedPhone || o.assignedTo?.phone}
+                          </a>
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -259,7 +273,7 @@ export default function CustomerOrders() {
                     {o.deliveryAddress || 'Default Address'}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
                     {/* Live GPS Track Button */}
                     {!isCancelled && (
                       <button
@@ -271,7 +285,31 @@ export default function CustomerOrders() {
                       </button>
                     )}
 
-                    {o.paymentMethod === 'online' && o.paymentStatus !== 'paid' && !isCancelled && (
+                    {/* UPI/QR Pay button — only shown AFTER delivery OTP is verified (post-delivery payment) */}
+                    {isCompleted && o.otpVerified && o.paymentStatus !== 'paid' && (
+                      <button
+                        className="btn btn-success btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                        onClick={() => setUpiPayOrder(o)}
+                      >
+                        💳 Pay via UPI / QR
+                      </button>
+                    )}
+
+                    {isCompleted && o.paymentStatus === 'paid' && (
+                      <span className="badge badge-completed" style={{ padding: '6px 14px', fontSize: 12 }}>
+                        💚 Payment Confirmed
+                      </span>
+                    )}
+
+                    {isCompleted && o.otpVerified && o.paymentStatus !== 'paid' && o.utrNumber && (
+                      <span className="badge badge-pending" style={{ padding: '6px 12px', fontSize: 11 }}>
+                        ⏳ UTR Submitted — Awaiting Confirmation
+                      </span>
+                    )}
+
+                    {/* Legacy Razorpay online payment */}
+                    {o.paymentMethod === 'online' && o.paymentStatus !== 'paid' && !isCancelled && !isCompleted && (
                       <button className="btn btn-success btn-sm" onClick={() => payNow(o)}>
                         💳 Pay Now
                       </button>
@@ -296,6 +334,15 @@ export default function CustomerOrders() {
           orderId={activeTrackingId}
           onClose={() => setActiveTrackingId(null)}
           onOrderUpdated={load}
+        />
+      )}
+
+      {/* UPI Payment Modal (post-delivery) */}
+      {upiPayOrder && (
+        <UpiPaymentModal
+          order={upiPayOrder}
+          onClose={() => setUpiPayOrder(null)}
+          onPaymentSubmitted={load}
         />
       )}
     </div>

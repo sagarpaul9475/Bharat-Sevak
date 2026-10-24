@@ -18,6 +18,7 @@ export default function ProviderOrders() {
   const [otpModalOrder, setOtpModalOrder] = useState(null);
   const [otpInput, setOtpInput] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -84,6 +85,19 @@ export default function ProviderOrders() {
       toast.error(err.response?.data?.message || 'OTP verification failed');
     } finally {
       setVerifyingOtp(false);
+    }
+  };
+
+  const handleConfirmPayment = async (orderId) => {
+    setConfirmingPayment(orderId);
+    try {
+      await providerAPI.confirmPayment(orderId, {});
+      toast.success('Payment confirmed! Customer has been notified.');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to confirm payment');
+    } finally {
+      setConfirmingPayment('');
     }
   };
 
@@ -167,7 +181,13 @@ export default function ProviderOrders() {
                   <div>
                     <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Customer & Destination</div>
                     <div className="font-medium text-md">{o.customer?.name}</div>
-                    <div className="text-sm mt-1">📞 {o.customer?.phone}</div>
+                    <a
+                      href={`tel:${o.customer?.phone}`}
+                      className="text-sm mt-1"
+                      style={{ color: '#F59E0B', textDecoration: 'none', display: 'block' }}
+                    >
+                      📞 {o.customer?.phone}
+                    </a>
                     {o.deliveryAddress && <div className="text-sm mt-1">📍 {o.deliveryAddress}</div>}
                     {o.notes && <div className="text-sm mt-2 p-2 rounded" style={{ background: 'var(--navy-border)' }}><strong>Note:</strong> {o.notes}</div>}
 
@@ -181,7 +201,12 @@ export default function ProviderOrders() {
                           <span style={{ fontSize: 16 }}>{isService ? '🛠️' : '🛵'}</span>
                           <span className="font-bold text-sm">{o.assignedName || o.assignedTo?.name}</span>
                           {(o.assignedPhone || o.assignedTo?.phone) && (
-                            <span className="text-xs text-muted">(📞 {o.assignedPhone || o.assignedTo?.phone})</span>
+                            <a
+                              href={`tel:${o.assignedPhone || o.assignedTo?.phone}`}
+                              style={{ fontSize: 12, color: '#F59E0B', textDecoration: 'none' }}
+                            >
+                              📞 {o.assignedPhone || o.assignedTo?.phone}
+                            </a>
                           )}
                         </div>
                       ) : (
@@ -218,6 +243,58 @@ export default function ProviderOrders() {
                         </div>
                       </div>
                     </div>
+
+                    {/* UTR payment card — shown when customer submits payment reference */}
+                    {o.utrNumber && o.paymentStatus !== 'paid' && (
+                      <div className="mt-3 p-3 rounded" style={{
+                        background: 'rgba(59,130,246,0.1)',
+                        border: '1px solid rgba(59,130,246,0.35)'
+                      }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: '#3B82F6', marginBottom: 6 }}>
+                          💰 Payment Reference Received
+                        </div>
+                        <div style={{ fontSize: 13, marginBottom: 4 }}>
+                          <strong>UTR / Ref:</strong>{' '}
+                          <span style={{ fontFamily: 'monospace', letterSpacing: 1, color: '#F59E0B' }}>{o.utrNumber}</span>
+                        </div>
+                        {o.payerPhone && (
+                          <div style={{ fontSize: 13, marginBottom: 4 }}>
+                            <strong>Payer Mobile:</strong>{' '}
+                            <a href={`tel:${o.payerPhone}`} style={{ color: '#F59E0B', textDecoration: 'none' }}>{o.payerPhone}</a>
+                          </div>
+                        )}
+                        {o.paymentNote && (
+                          <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 8 }}>Note: {o.paymentNote}</div>
+                        )}
+                        <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 8 }}>
+                          Submitted: {o.paymentSubmittedAt ? new Date(o.paymentSubmittedAt).toLocaleString() : 'N/A'}
+                        </div>
+                        <button
+                          className="btn btn-success btn-sm w-full"
+                          style={{ fontWeight: 700 }}
+                          onClick={() => handleConfirmPayment(o._id)}
+                          disabled={confirmingPayment === o._id}
+                        >
+                          {confirmingPayment === o._id ? '⏳ Confirming...' : '✅ Confirm Payment Received'}
+                        </button>
+                      </div>
+                    )}
+
+                    {o.paymentStatus === 'paid' && (
+                      <div className="mt-3 p-3 rounded" style={{
+                        background: 'rgba(16,185,129,0.1)',
+                        border: '1px solid rgba(16,185,129,0.3)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>✅</span>
+                          <div style={{ fontSize: 12 }}>
+                            <strong>Payment Confirmed</strong>{' • '}
+                            {o.paymentConfirmedAt ? new Date(o.paymentConfirmedAt).toLocaleString() : 'Confirmed'}
+                            {o.txnId && <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#94A3B8', marginTop: 2 }}>TXN: {o.txnId}</div>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

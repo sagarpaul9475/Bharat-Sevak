@@ -64,6 +64,17 @@ export default function ProviderProfile() {
   });
   const [saving, setSaving] = useState(false);
   const [isVerified, setIsVerified] = useState(Boolean(user?.isVerified));
+
+  // Bank & UPI details state
+  const [bankForm, setBankForm] = useState({
+    accountHolderName: '', accountNumber: '', ifscCode: '', bankName: ''
+  });
+  const [upiForm, setUpiForm] = useState({
+    upiId: '', upiPhone: '', upiName: ''
+  });
+  const [savingBank, setSavingBank] = useState(false);
+  const [loadingBank, setLoadingBank] = useState(true);
+
   const [kycDocs, setKycDocs] = useState([]);
   const [businessDocs, setBusinessDocs] = useState([]);
   const [kycType, setKycType] = useState('aadhaar');
@@ -89,8 +100,32 @@ export default function ProviderProfile() {
     }
   };
 
+  const loadBankDetails = async () => {
+    setLoadingBank(true);
+    try {
+      const { data } = await providerAPI.getBankDetails();
+      if (data.bankDetails) {
+        setBankForm({
+          accountHolderName: data.bankDetails.accountHolderName || '',
+          accountNumber: data.bankDetails.accountNumber || '',
+          ifscCode: data.bankDetails.ifscCode || '',
+          bankName: data.bankDetails.bankName || '',
+        });
+      }
+      if (data.upiDetails) {
+        setUpiForm({
+          upiId: data.upiDetails.upiId || '',
+          upiPhone: data.upiDetails.upiPhone || '',
+          upiName: data.upiDetails.upiName || '',
+        });
+      }
+    } catch {}
+    finally { setLoadingBank(false); }
+  };
+
   useEffect(() => {
     loadDocs();
+    loadBankDetails();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -106,6 +141,19 @@ export default function ProviderProfile() {
       toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveBankDetails = async (e) => {
+    e.preventDefault();
+    setSavingBank(true);
+    try {
+      await providerAPI.saveBankDetails({ bankDetails: bankForm, upiDetails: upiForm });
+      toast.success('Bank & UPI details saved successfully!');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save payment details');
+    } finally {
+      setSavingBank(false);
     }
   };
 
@@ -309,6 +357,130 @@ export default function ProviderProfile() {
             </div>
             <p className="text-xs text-muted mt-3">Only upload documents you are comfortable sharing for verification. Aadhaar contains sensitive personal information; use a masked Aadhaar where accepted and do not upload documents for anyone else.</p>
           </section>
+
+          {/* Bank & UPI Payment Details Card */}
+          <section className="card">
+            <div className="flex items-start gap-3 mb-4">
+              <div style={{ fontSize: 28 }}>💳</div>
+              <div>
+                <h3 className="text-lg font-bold">Bank & UPI Payment Details</h3>
+                <p className="text-sm text-muted mt-1">
+                  Add your UPI ID or bank account so customers can pay you directly via PhonePe, Google Pay, Paytm, BHIM, or NEFT.
+                </p>
+              </div>
+            </div>
+
+            {loadingBank ? (
+              <div className="text-sm text-muted">Loading payment details...</div>
+            ) : (
+              <form onSubmit={handleSaveBankDetails} className="form-grid">
+                {/* UPI Section */}
+                <div className="form-group full" style={{ marginBottom: 0 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+                    letterSpacing: 1, color: '#64748B', marginBottom: 10
+                  }}>
+                    📱 UPI / QR Payment
+                  </div>
+                </div>
+
+                <div className="form-group full">
+                  <label className="form-label">UPI ID / VPA</label>
+                  <input
+                    className="form-input"
+                    value={upiForm.upiId}
+                    onChange={e => setUpiForm({ ...upiForm, upiId: e.target.value })}
+                    placeholder="e.g. shopname@okaxis or yourname@ybl"
+                  />
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>This is your UPI address (VPA). Customers will scan a QR code or enter this to pay.</div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">PhonePe / GPay / Paytm Mobile No.</label>
+                  <input
+                    className="form-input"
+                    value={upiForm.upiPhone}
+                    onChange={e => setUpiForm({ ...upiForm, upiPhone: e.target.value })}
+                    placeholder="10-digit mobile linked to UPI app"
+                    inputMode="tel"
+                    maxLength={10}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Display Name (UPI App)</label>
+                  <input
+                    className="form-input"
+                    value={upiForm.upiName}
+                    onChange={e => setUpiForm({ ...upiForm, upiName: e.target.value })}
+                    placeholder="Name shown in payer's UPI app"
+                  />
+                </div>
+
+                {/* Bank Account Section */}
+                <div className="form-group full" style={{ marginBottom: 0, marginTop: 8 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+                    letterSpacing: 1, color: '#64748B', marginBottom: 10,
+                    paddingTop: 12, borderTop: '1px solid var(--navy-border)'
+                  }}>
+                    🏦 Bank Account (NEFT / IMPS)
+                  </div>
+                </div>
+
+                <div className="form-group full">
+                  <label className="form-label">Account Holder Name</label>
+                  <input
+                    className="form-input"
+                    value={bankForm.accountHolderName}
+                    onChange={e => setBankForm({ ...bankForm, accountHolderName: e.target.value })}
+                    placeholder="Full name as per bank records"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Account Number</label>
+                  <input
+                    className="form-input"
+                    value={bankForm.accountNumber}
+                    onChange={e => setBankForm({ ...bankForm, accountNumber: e.target.value })}
+                    placeholder="Bank account number"
+                    inputMode="numeric"
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">IFSC Code</label>
+                  <input
+                    className="form-input"
+                    value={bankForm.ifscCode}
+                    onChange={e => setBankForm({ ...bankForm, ifscCode: e.target.value.toUpperCase() })}
+                    placeholder="e.g. SBIN0001234"
+                    style={{ fontFamily: 'monospace', textTransform: 'uppercase' }}
+                    maxLength={11}
+                  />
+                </div>
+
+                <div className="form-group full">
+                  <label className="form-label">Bank Name</label>
+                  <input
+                    className="form-input"
+                    value={bankForm.bankName}
+                    onChange={e => setBankForm({ ...bankForm, bankName: e.target.value })}
+                    placeholder="e.g. State Bank of India, HDFC Bank"
+                  />
+                </div>
+
+                <div className="form-group full">
+                  <button type="submit" className="btn btn-primary" disabled={savingBank}>
+                    {savingBank ? '⏳ Saving...' : '💾 Save Payment Details'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+
           {uploadCard('kyc')}
           {uploadCard('business')}
         </div>

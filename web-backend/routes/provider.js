@@ -222,4 +222,64 @@ router.put('/profile', providerGuard, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// ── Bank & UPI Details ───────────────────────────────────────
+router.get('/bank-details', providerGuard, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('bankDetails upiDetails');
+    res.json(user);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.put('/bank-details', providerGuard, async (req, res) => {
+  try {
+    const { bankDetails, upiDetails } = req.body;
+    const update = {};
+    if (bankDetails) {
+      update['bankDetails.accountHolderName'] = (bankDetails.accountHolderName || '').trim();
+      update['bankDetails.accountNumber'] = (bankDetails.accountNumber || '').trim();
+      update['bankDetails.ifscCode'] = (bankDetails.ifscCode || '').trim().toUpperCase();
+      update['bankDetails.bankName'] = (bankDetails.bankName || '').trim();
+    }
+    if (upiDetails) {
+      update['upiDetails.upiId'] = (upiDetails.upiId || '').trim();
+      update['upiDetails.upiPhone'] = (upiDetails.upiPhone || '').trim();
+      update['upiDetails.upiName'] = (upiDetails.upiName || '').trim();
+    }
+    const user = await User.findByIdAndUpdate(req.user._id, { $set: update }, { new: true }).select('bankDetails upiDetails');
+    res.json(user);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── Order Payment Info & Confirmation ────────────────────────
+// Get payment submission status for a specific order
+router.get('/orders/:id/payment-info', providerGuard, async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, provider: req.user._id })
+      .select('orderId totalAmount paymentStatus paymentMethod utrNumber payerPhone paymentNote paymentSubmittedAt paymentConfirmedAt txnId');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json(order);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// Provider confirms payment received (after customer submits UTR)
+router.put('/orders/:id/confirm-payment', providerGuard, async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, provider: req.user._id });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (order.paymentStatus === 'paid') return res.status(400).json({ message: 'Payment already confirmed' });
+    order.paymentStatus = 'paid';
+    order.paymentConfirmedAt = new Date();
+    if (req.body.txnId) order.txnId = req.body.txnId;
+    await order.save();
+    await notifyUser(order.customer, {
+      title: 'Payment Confirmed ✅',
+      message: `Your payment for order ${order.orderId} has been confirmed by the provider.`,
+      type: 'order',
+      link: '/orders',
+      metadata: { orderId: String(order._id) },
+    });
+    res.json(order);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
 module.exports = router;

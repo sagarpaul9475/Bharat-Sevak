@@ -48,6 +48,19 @@ const userSchema = new mongoose.Schema({
     uploadedAt: { type: Date, default: Date.now },
     url: String,
   }],
+  // Bank account details for UPI / direct transfer payments
+  bankDetails: {
+    accountHolderName: { type: String, default: '' },
+    accountNumber: { type: String, default: '' },
+    ifscCode: { type: String, default: '', uppercase: true, trim: true },
+    bankName: { type: String, default: '' },
+  },
+  // UPI / QR payment details (PhonePe, Google Pay, Paytm, BHIM, etc.)
+  upiDetails: {
+    upiId: { type: String, default: '', trim: true },   // e.g. shop@okaxis
+    upiPhone: { type: String, default: '' },            // Mobile number linked to UPI app
+    upiName: { type: String, default: '' },             // Display name shown in UPI apps
+  },
   // Dual role: provider can also act as customer
   canActAsCustomer: { type: Boolean, default: false },
   activeRole: { type: String, enum: ['customer', 'provider'], default: 'provider' },

@@ -221,4 +221,47 @@ router.put('/profile', verifyToken, async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// ── UPI Payment Info for Order ──────────────────────────────────────────────
+// Returns provider's UPI/bank details and the order amount so the customer can pay
+router.get('/orders/:id/payment-info', verifyToken, async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
+      .select('orderId totalAmount paymentStatus paymentMethod utrNumber payerPhone paymentSubmittedAt otpVerified status')
+      .populate('provider', 'name businessName phone upiDetails bankDetails');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json(order);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// Customer submits UPI/payment reference after paying via QR code
+router.post('/orders/:id/submit-payment', verifyToken, async (req, res) => {
+  try {
+    const { utrNumber, payerPhone, paymentNote } = req.body;
+    const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (order.paymentStatus === 'paid') return res.status(400).json({ message: 'Payment already confirmed' });
+    // Allow payment submission only after delivery is completed / OTP verified
+    if (!order.otpVerified && order.status !== 'completed') {
+      return res.status(400).json({ message: 'Payment can only be submitted after the delivery/service is completed and OTP is verified.' });
+    }
+    if (!utrNumber || utrNumber.trim().length < 6) {
+      return res.status(400).json({ message: 'Please enter a valid UTR / Transaction Reference number (minimum 6 characters).' });
+    }
+    order.utrNumber = utrNumber.trim();
+    order.payerPhone = (payerPhone || '').trim();
+    order.paymentNote = (paymentNote || '').trim();
+    order.paymentSubmittedAt = new Date();
+    order.paymentMethod = 'qr';
+    await order.save();
+    await notifyUser(order.provider, {
+      title: '💰 Payment Reference Received',
+      message: `Customer submitted UTR ${utrNumber} for order ${order.orderId}. Please verify and confirm payment.`,
+      type: 'order',
+      link: '/provider/orders',
+      metadata: { orderId: String(order._id) },
+    });
+    res.json({ message: 'Payment reference submitted. The provider will confirm receipt shortly.', order });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
 module.exports = router;

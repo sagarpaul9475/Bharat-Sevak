@@ -23,6 +23,11 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
   paymentMethod: { type: String, enum: ['qr', 'cash', 'online'], default: 'cash' },
   txnId: { type: String, default: '' },
+  utrNumber: { type: String, default: '' },          // UPI UTR / reference number submitted by customer
+  payerPhone: { type: String, default: '' },          // Customer's UPI-linked mobile number
+  paymentNote: { type: String, default: '' },         // Optional note by customer
+  paymentSubmittedAt: { type: Date },                 // When customer submitted payment proof
+  paymentConfirmedAt: { type: Date },                 // When provider confirmed payment
   gatewayOrderId: { type: String, default: '' },
   gatewayPaymentId: { type: String, default: '' },
   platformCommissionPercent: { type: Number, default: 1, min: 0, max: 100 },
