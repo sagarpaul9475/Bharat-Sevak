@@ -40,7 +40,7 @@ router.get('/workers', verifyToken, async (req, res) => {
       filter.serviceSpecialization = { $regex: specialization, $options: 'i' };
     }
     const workers = await User.find(filter)
-      .select('name phone role deliveryVehicleType serviceSpecialization isAvailable currentLocation address region businessName')
+      .select('name phone role deliveryVehicleType serviceSpecialization isAvailable currentLocation address region businessName deliveryCoverage')
       .limit(30);
     res.json(workers);
   } catch (err) {
@@ -52,6 +52,8 @@ router.get('/workers', verifyToken, async (req, res) => {
 router.get('/tasks', verifyToken, async (req, res) => {
   try {
     const userId = req.user._id;
+    const workerPin = String(req.user.region?.pincode || '');
+    const workerCoverage = req.user.deliveryCoverage || { mode: 'local', pincodes: [] };
     const userRole = req.user.role;
     let filter = {};
 
@@ -73,12 +75,23 @@ router.get('/tasks', verifyToken, async (req, res) => {
       filter = { customer: userId };
     }
 
-    const tasks = await Order.find(filter)
+    let tasks = await Order.find(filter)
       .populate('customer', 'name phone address')
       .populate('provider', 'name businessName phone address')
       .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization')
       .sort('-createdAt')
       .limit(50);
+
+    if (userRole === 'delivery') {
+      tasks = tasks.filter(task => {
+        if (String(task.assignedTo?._id || task.assignedTo || '') === String(userId)) return true;
+        if (!['confirmed', 'assigned'].includes(task.status)) return false;
+        const destination = String(task.deliveryPincode || '');
+        if (!/^\d{6}$/.test(destination)) return false;
+        if (workerCoverage.mode === 'cross_city') return (workerCoverage.pincodes || []).includes(destination);
+        return Boolean(workerPin) && workerPin === destination;
+      });
+    }
 
     // Redact deliveryOtp if requester is a delivery agent and order is not yet completed
     const safeTasks = tasks.map(task => {
