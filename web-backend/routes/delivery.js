@@ -166,6 +166,13 @@ router.put('/orders/:id/assign', verifyToken, async (req, res) => {
       workerUser = req.user;
     }
 
+    if (workerUser && workerUser.role === 'delivery') {
+      const destination = String(order.deliveryPincode || '');
+      const localPin = String(workerUser.region?.pincode || '');
+      const coverage = workerUser.deliveryCoverage || { mode: 'local', pincodes: [] };
+      const canServe = coverage.mode === 'cross_city' ? (coverage.pincodes || []).includes(destination) : Boolean(localPin) && localPin === destination;
+      if (!canServe) return res.status(400).json({ message: 'This delivery partner does not cover the order destination PIN code' });
+    }
     order.assignedTo = workerUser ? workerUser._id : (assignedTo || undefined);
     order.assignedName = assignedName || workerUser?.name || 'Assigned Partner';
     order.assignedPhone = assignedPhone || workerUser?.phone || '';
