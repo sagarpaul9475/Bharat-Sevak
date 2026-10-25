@@ -48,7 +48,7 @@ export default function RegisterPage() {
         password: form.password,
         role,
         region: { state: form.state, district: form.district, area: form.area, pincode: form.pincode },
-        deliveryCoverage: role === 'delivery' ? { mode: form.deliveryMode, pincodes: form.deliveryMode === 'cross_city' ? form.deliveryPincodes.split(/[\\s,;]+/).map(p => p.trim()).filter(Boolean) : [] } : undefined,
+        deliveryCoverage: role === 'delivery' ? { mode: form.deliveryMode, pincodes: form.deliveryMode === 'cross_city' ? form.deliveryPincodes.split(/[\s,;]+/).map(p => p.trim()).filter(Boolean) : [] } : undefined,
       };
       if (role === 'provider') {
         payload.businessName = form.businessName;
