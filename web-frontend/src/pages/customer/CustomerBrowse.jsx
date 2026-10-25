@@ -18,6 +18,7 @@ export default function CustomerBrowse() {
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [deliveryPincode, setDeliveryPincode] = useState(user?.region?.pincode || '');
 
   const load = () => {
     setLoading(true);
@@ -139,12 +140,14 @@ export default function CustomerBrowse() {
 
   const placeOrder = async (paymentMethod = 'cash') => {
     if (cart.length === 0) return;
+    if (!/^\d{6}$/.test(deliveryPincode.trim())) { toast.error('Enter a valid 6-digit delivery PIN code'); return; }
     setPlacingOrder(true);
     try {
       const { data: order } = await customerAPI.placeOrder({
         items: cart.map(({ itemType, item, quantity }) => ({ itemType, item, quantity })),
         paymentMethod,
         deliveryAddress: user.address || 'My Default Address',
+        deliveryPincode: deliveryPincode.trim(),
       });
       setCart([]);
       setShowCart(false);
@@ -311,6 +314,7 @@ export default function CustomerBrowse() {
             <div className="modal-head"><h2>🛒 Your Cart</h2><button className="btn-icon btn-secondary" onClick={() => setShowCart(false)}>✕</button></div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
+              <div className="form-group" style={{ padding: '12px 12px 0' }}><label className="form-label">Delivery PIN code *</label><input className="form-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6-digit destination PIN" value={deliveryPincode} onChange={e => setDeliveryPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} required /></div>
               {cart.length === 0 ? <div className="empty-state"><div className="empty-icon">🛒</div><div className="empty-title">Cart is empty</div></div> : (
                 <>
                   <div className="text-sm font-bold text-saffron mb-3">Ordering from: {cart[0].providerName}</div>
