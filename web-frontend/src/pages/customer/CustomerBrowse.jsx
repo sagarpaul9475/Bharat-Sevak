@@ -11,18 +11,20 @@ export default function CustomerBrowse() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [pincode, setPincode] = useState(user?.region?.pincode || '');
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
 
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [deliveryPincode, setDeliveryPincode] = useState(user?.region?.pincode || '');
 
   const load = () => {
     setLoading(true);
     const apiCall = tab === 'products'
-      ? customerAPI.getProducts({ search })
-      : customerAPI.getServices({ search });
+      ? customerAPI.getProducts({ search, pincode: pincode.trim() })
+      : customerAPI.getServices({ search, pincode: pincode.trim() });
     apiCall
       .then(r => setItems(tab === 'products' ? r.data.products : r.data.services))
       .catch(() => toast.error('Failed to load items'))
@@ -30,6 +32,7 @@ export default function CustomerBrowse() {
   };
 
   useEffect(() => { load(); }, [tab]);
+  useEffect(() => { const timer = setTimeout(load, 350); return () => clearTimeout(timer); }, [pincode]);
   useEffect(() => {
     const timer = setTimeout(load, 500);
     return () => clearTimeout(timer);
@@ -137,12 +140,14 @@ export default function CustomerBrowse() {
 
   const placeOrder = async (paymentMethod = 'cash') => {
     if (cart.length === 0) return;
+    if (!/^\d{6}$/.test(deliveryPincode.trim())) { toast.error('Enter a valid 6-digit delivery PIN code'); return; }
     setPlacingOrder(true);
     try {
       const { data: order } = await customerAPI.placeOrder({
         items: cart.map(({ itemType, item, quantity }) => ({ itemType, item, quantity })),
         paymentMethod,
         deliveryAddress: user.address || 'My Default Address',
+        deliveryPincode: deliveryPincode.trim(),
       });
       setCart([]);
       setShowCart(false);
@@ -176,6 +181,13 @@ export default function CustomerBrowse() {
         </button>
       </div>
 
+      <div className="card mb-4" style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+        <div className="form-group" style={{ flex: '1 1 220px', margin: 0 }}>
+          <label className="form-label">Shop by delivery PIN code</label>
+          <input className="form-input" inputMode="numeric" maxLength={6} placeholder="Enter 6-digit PIN code" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+        </div>
+        <p className="text-xs text-muted" style={{ flex: '1 1 220px', margin: 0 }}>Enter a destination PIN code to filter listings.</p>
+      </div>
       <div className="card mb-6 browse-toolbar">
         <div className="search-wrap" style={{ flex: 1 }}>
           <span className="search-icon">🔍</span>
@@ -302,6 +314,7 @@ export default function CustomerBrowse() {
             <div className="modal-head"><h2>🛒 Your Cart</h2><button className="btn-icon btn-secondary" onClick={() => setShowCart(false)}>✕</button></div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
+              <div className="form-group" style={{ padding: '12px 12px 0' }}><label className="form-label">Delivery PIN code *</label><input className="form-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6-digit destination PIN" value={deliveryPincode} onChange={e => setDeliveryPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} required /></div>
               {cart.length === 0 ? <div className="empty-state"><div className="empty-icon">🛒</div><div className="empty-title">Cart is empty</div></div> : (
                 <>
                   <div className="text-sm font-bold text-saffron mb-3">Ordering from: {cart[0].providerName}</div>

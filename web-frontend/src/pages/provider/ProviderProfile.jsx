@@ -60,7 +60,7 @@ export default function ProviderProfile() {
     name: user?.name || '', phone: user?.phone || '', businessName: user?.businessName || '',
     businessDesc: user?.businessDesc || '', address: user?.address || '',
     providerType: user?.providerType || 'product', state: user?.region?.state || '',
-    district: user?.region?.district || '', area: user?.region?.area || ''
+    district: user?.region?.district || '', area: user?.region?.area || '', pincode: user?.region?.pincode || '', deliveryMode: user?.deliveryCoverage?.mode || 'local', deliveryPincodes: (user?.deliveryCoverage?.pincodes || []).join(', ')
   });
   const [saving, setSaving] = useState(false);
   const [isVerified, setIsVerified] = useState(Boolean(user?.isVerified));
@@ -134,7 +134,7 @@ export default function ProviderProfile() {
     try {
       await providerAPI.updateProfile({
         name: form.name, phone: form.phone, businessName: form.businessName, businessDesc: form.businessDesc, address: form.address, providerType: form.providerType,
-        region: { state: form.state, district: form.district, area: form.area }
+        region: { state: form.state, district: form.district, area: form.area, pincode: form.pincode }, deliveryCoverage: { mode: form.deliveryMode, pincodes: form.deliveryMode === 'cross_city' ? form.deliveryPincodes.split(/[\s,;]+/).map(p => p.trim()).filter(Boolean) : [] }
       });
       toast.success('Profile updated successfully');
     } catch (error) {
@@ -331,10 +331,28 @@ export default function ProviderProfile() {
               <label className="form-label">District</label>
               <input className="form-input" value={form.district} onChange={e => setForm({ ...form, district: e.target.value })} />
             </div>
+            <div className="form-group">
+              <label className="form-label">PIN Code</label>
+              <input className="form-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={form.pincode} onChange={e => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
+            </div>
             <div className="form-group full">
               <label className="form-label">Area / Locality</label>
               <input className="form-input" value={form.area} onChange={e => setForm({ ...form, area: e.target.value })} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Delivery Coverage</label>
+              <select className="form-select" value={form.deliveryMode} onChange={e => setForm({ ...form, deliveryMode: e.target.value })}>
+                <option value="local">Local PIN code only</option>
+                <option value="cross_city">Cross-city / multiple PIN codes</option>
+              </select>
+            </div>
+            {form.deliveryMode === 'cross_city' && (
+              <div className="form-group full">
+                <label className="form-label">Destination PIN codes served</label>
+                <textarea className="form-input" rows={3} placeholder="e.g. 700001, 700091, 721101" value={form.deliveryPincodes} onChange={e => setForm({ ...form, deliveryPincodes: e.target.value })} required />
+                <p className="text-xs text-muted mt-1">List the PIN codes your products/business can fulfil.</p>
+              </div>
+            )}
             <div className="form-group full">
               <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? '⏳ Saving...' : '💾 Save Changes'}</button>
             </div>

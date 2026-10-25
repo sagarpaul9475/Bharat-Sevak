@@ -23,7 +23,10 @@ export default function RegisterPage() {
     serviceSpecialization: 'Delivery Partner',
     state: '',
     district: '',
-    area: ''
+    area: '',
+    pincode: '',
+    deliveryMode: 'local',
+    deliveryPincodes: ''
   });
   const [loading, setLoading] = useState(false);
   const [pledgeAccepted, setPledgeAccepted] = useState(false);
@@ -44,7 +47,8 @@ export default function RegisterPage() {
         phone: form.phone,
         password: form.password,
         role,
-        region: { state: form.state, district: form.district, area: form.area },
+        region: { state: form.state, district: form.district, area: form.area, pincode: form.pincode },
+        deliveryCoverage: role === 'delivery' ? { mode: form.deliveryMode, pincodes: form.deliveryMode === 'cross_city' ? form.deliveryPincodes.split(/[\s,;]+/).map(p => p.trim()).filter(Boolean) : [] } : undefined,
       };
       if (role === 'provider') {
         payload.businessName = form.businessName;
@@ -219,12 +223,32 @@ export default function RegisterPage() {
                 <label className="form-label">District</label>
                 <input className="form-input" placeholder="e.g. Nadia" value={form.district} onChange={e => setForm(f => ({ ...f, district: e.target.value }))} />
               </div>
+              <div className="form-group">
+                <label className="form-label">PIN Code *</label>
+                <input className="form-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6-digit PIN code" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) }))} required />
+              </div>
               <div className="form-group full">
                 <label className="form-label">Area / Locality</label>
                 <input className="form-input" placeholder="e.g. Bethuadahari" value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} />
               </div>
             </div>
 
+              {role === 'delivery' && (
+                <div className="form-group full" style={{ marginTop: 8 }}>
+                  <label className="form-label">Delivery Coverage *</label>
+                  <select className="form-select" value={form.deliveryMode} onChange={e => setForm(f => ({ ...f, deliveryMode: e.target.value }))}>
+                    <option value="local">Local delivery — within my city / service area</option>
+                    <option value="cross_city">Cross-city delivery — multiple PIN codes / places</option>
+                  </select>
+                  {form.deliveryMode === 'cross_city' && (
+                    <div style={{ marginTop: 10 }}>
+                      <label className="form-label">PIN codes you can deliver to *</label>
+                      <textarea className="form-input" rows={3} placeholder="e.g. 700001, 700091, 721101 (comma or space separated)" value={form.deliveryPincodes} onChange={e => setForm(f => ({ ...f, deliveryPincodes: e.target.value }))} required />
+                      <p className="text-xs text-muted mt-1">Enter the destination PIN codes you can reliably serve.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             <button type="submit" className="btn btn-primary w-full" style={{ padding: '13px', fontSize: 15, marginTop: 16 }} disabled={loading}>
               {loading ? '⏳ Creating account...' : `✅ Register as ${role === 'customer' ? 'Customer' : role === 'provider' ? 'Provider' : 'Delivery & Tech Partner'}`}
             </button>

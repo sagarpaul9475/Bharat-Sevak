@@ -40,7 +40,7 @@ router.get('/workers', verifyToken, async (req, res) => {
       filter.serviceSpecialization = { $regex: specialization, $options: 'i' };
     }
     const workers = await User.find(filter)
-      .select('name phone role deliveryVehicleType serviceSpecialization isAvailable currentLocation address region businessName')
+      .select('name phone role deliveryVehicleType serviceSpecialization isAvailable currentLocation address region businessName deliveryCoverage')
       .limit(30);
     res.json(workers);
   } catch (err) {
@@ -52,6 +52,8 @@ router.get('/workers', verifyToken, async (req, res) => {
 router.get('/tasks', verifyToken, async (req, res) => {
   try {
     const userId = req.user._id;
+    const workerPin = String(req.user.region?.pincode || '');
+    const workerCoverage = req.user.deliveryCoverage || { mode: 'local', pincodes: [] };
     const userRole = req.user.role;
     let filter = {};
 
@@ -73,12 +75,23 @@ router.get('/tasks', verifyToken, async (req, res) => {
       filter = { customer: userId };
     }
 
-    const tasks = await Order.find(filter)
+    let tasks = await Order.find(filter)
       .populate('customer', 'name phone address')
       .populate('provider', 'name businessName phone address')
       .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization')
       .sort('-createdAt')
       .limit(50);
+
+    if (userRole === 'delivery') {
+      tasks = tasks.filter(task => {
+        if (String(task.assignedTo?._id || task.assignedTo || '') === String(userId)) return true;
+        if (!['confirmed', 'assigned'].includes(task.status)) return false;
+        const destination = String(task.deliveryPincode || '');
+        if (!/^\d{6}$/.test(destination)) return false;
+        if (workerCoverage.mode === 'cross_city') return (workerCoverage.pincodes || []).includes(destination);
+        return Boolean(workerPin) && workerPin === destination;
+      });
+    }
 
     // Redact deliveryOtp if requester is a delivery agent and order is not yet completed
     const safeTasks = tasks.map(task => {
@@ -153,6 +166,13 @@ router.put('/orders/:id/assign', verifyToken, async (req, res) => {
       workerUser = req.user;
     }
 
+    if (workerUser && workerUser.role === 'delivery') {
+      const destination = String(order.deliveryPincode || '');
+      const localPin = String(workerUser.region?.pincode || '');
+      const coverage = workerUser.deliveryCoverage || { mode: 'local', pincodes: [] };
+      const canServe = coverage.mode === 'cross_city' ? (coverage.pincodes || []).includes(destination) : Boolean(localPin) && localPin === destination;
+      if (!canServe) return res.status(400).json({ message: 'This delivery partner does not cover the order destination PIN code' });
+    }
     order.assignedTo = workerUser ? workerUser._id : (assignedTo || undefined);
     order.assignedName = assignedName || workerUser?.name || 'Assigned Partner';
     order.assignedPhone = assignedPhone || workerUser?.phone || '';

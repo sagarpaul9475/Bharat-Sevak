@@ -85,7 +85,7 @@ router.post('/products', providerGuard, async (req, res) => {
       images: media.images,
       videoUrl: media.videoUrl,
       provider: req.user._id,
-      region: req.user.region,
+      region: { ...(req.user.region?.toObject?.() || req.user.region?.toJSON?.() || req.user.region || {}), pincode: req.user.region?.pincode || '' },
       status: 'pending',
     });
     await notifyRole('admin', {
@@ -216,8 +216,14 @@ router.get('/co-providers', providerGuard, async (req, res) => {
 // Update profile
 router.put('/profile', providerGuard, async (req, res) => {
   try {
-    const { name, phone, businessName, businessDesc, address, region, providerType } = req.body;
-    const user = await User.findByIdAndUpdate(req.user._id, { name, phone, businessName, businessDesc, address, region, providerType }, { new: true }).select('-password');
+    const { name, phone, businessName, businessDesc, address, region, providerType, deliveryCoverage } = req.body;
+    const normalizedRegion = { ...(region || {}) };
+    if (normalizedRegion.pincode && !/^\d{6}$/.test(String(normalizedRegion.pincode))) return res.status(400).json({ message: 'PIN code must be exactly 6 digits' });
+    const coverage = deliveryCoverage || req.user.deliveryCoverage || { mode: 'local', pincodes: [] };
+    const coveragePincodes = Array.isArray(coverage.pincodes) ? [...new Set(coverage.pincodes.map(String).map(p => p.trim()).filter(Boolean))] : [];
+    if (coveragePincodes.some(p => !/^\d{6}$/.test(p))) return res.status(400).json({ message: 'Every coverage PIN code must be exactly 6 digits' });
+    if (coverage.mode === 'cross_city' && coveragePincodes.length === 0) return res.status(400).json({ message: 'Add at least one PIN code for cross-city coverage' });
+    const user = await User.findByIdAndUpdate(req.user._id, { name, phone, businessName, businessDesc, address, region: normalizedRegion, providerType, deliveryCoverage: { mode: coverage.mode === 'cross_city' ? 'cross_city' : 'local', pincodes: coveragePincodes } }, { new: true }).select('-password');
     res.json(user);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
