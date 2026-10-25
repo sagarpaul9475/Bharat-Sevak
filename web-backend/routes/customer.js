@@ -60,9 +60,7 @@ router.post('/orders', verifyToken, async (req, res) => {
   try {
     const { items, paymentMethod, deliveryAddress, deliveryPincode, notes } = req.body;
     const destinationPincode = String(deliveryPincode || req.user.region?.pincode || '').trim();
-    if (!/^\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' });
-    const destinationPincode = String(deliveryPincode || req.user.region?.pincode || '').trim();
-    if (!/^\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' });
+    if (!/^\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' })
     if (!items || items.length === 0) return res.status(400).json({ message: 'No items in order' });
 
     if (!Array.isArray(items) || items.length === 0 || items.length > 30) {
