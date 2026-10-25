@@ -11,12 +11,13 @@ const { notifyUser, notifyRole } = require('../utils/notifications');
 // ── Public: Browse Products ──────────────────────────────────
 router.get('/products', async (req, res) => {
   try {
-    const { category, search, state, district, area, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
+    const { category, search, state, district, area, pincode, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
     const filter = { status: 'approved' };
     if (category) filter.category = category;
     if (state) filter['region.state'] = state;
     if (district) filter['region.district'] = district;
     if (area) filter['region.area'] = area;
+    if (pincode) { if (!/^\\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
     if (req.query.provider) filter.provider = req.query.provider;
     if (search) filter.$or = [{ name: { $regex: search, $options: 'i' } }, { tags: { $in: [new RegExp(search, 'i')] } }];
     if (minPrice || maxPrice) filter.price = {};
@@ -32,10 +33,11 @@ router.get('/products', async (req, res) => {
 // ── Public: Browse Services ──────────────────────────────────
 router.get('/services', async (req, res) => {
   try {
-    const { serviceType, search, state, page = 1, limit = 12 } = req.query;
+    const { serviceType, search, state, pincode, page = 1, limit = 12 } = req.query;
     const filter = { status: 'approved' };
     if (serviceType) filter.serviceType = serviceType;
     if (state) filter['region.state'] = state;
+    if (pincode) { if (!/^\\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
     if (req.query.provider) filter.provider = req.query.provider;
     if (search) filter.name = { $regex: search, $options: 'i' };
     const services = await Service.find(filter).populate('provider', 'name businessName region').sort('-createdAt')
@@ -56,7 +58,9 @@ router.get('/menus', async (req, res) => {
 // ── Authenticated: Place Order ───────────────────────────────
 router.post('/orders', verifyToken, async (req, res) => {
   try {
-    const { items, paymentMethod, deliveryAddress, notes } = req.body;
+    const { items, paymentMethod, deliveryAddress, deliveryPincode, notes } = req.body;
+    const destinationPincode = String(deliveryPincode || req.user.region?.pincode || '').trim();
+    if (!/^\\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' });
     if (!items || items.length === 0) return res.status(400).json({ message: 'No items in order' });
 
     if (!Array.isArray(items) || items.length === 0 || items.length > 30) {
@@ -106,6 +110,9 @@ router.post('/orders', verifyToken, async (req, res) => {
     const hasProduct = orderItems.some(i => i.itemType === 'product');
     const orderType = (hasService && hasProduct) ? 'mixed' : hasService ? 'service' : 'product';
     const providerUser = await User.findById(providerId);
+    const providerPin = String(providerUser?.region?.pincode || '');
+    const canProviderServeDestination = providerUser?.deliveryCoverage?.mode === 'cross_city' ? (providerUser.deliveryCoverage.pincodes || []).includes(destinationPincode) : (!providerPin || providerPin === destinationPincode);
+    if (!canProviderServeDestination) return res.status(400).json({ message: 'This provider does not currently deliver to that PIN code' });
 
     // Initial coordinates (with subtle deterministic delta based on order count so points are distinct on map)
     const baseLat = 22.5726;
@@ -121,7 +128,8 @@ router.post('/orders', verifyToken, async (req, res) => {
       items: orderItems,
       totalAmount,
       paymentMethod: selectedPaymentMethod,
-      deliveryAddress,
+      deliveryAddress: `${deliveryAddress || req.user.address || 'Customer Destination'}${deliveryAddress || req.user.address ? ', ' : ''}PIN: ${destinationPincode}`,
+      deliveryPincode: destinationPincode,
       notes,
       orderType,
       deliveryOtp: String(Math.floor(1000 + Math.random() * 9000)),
