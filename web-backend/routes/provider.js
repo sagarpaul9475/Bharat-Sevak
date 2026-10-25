@@ -85,7 +85,7 @@ router.post('/products', providerGuard, async (req, res) => {
       images: media.images,
       videoUrl: media.videoUrl,
       provider: req.user._id,
-      region: { ...req.user.region?.toObject?.(), pincode: req.user.region?.pincode || '' },
+      region: { ...(req.user.region?.toObject?.() || req.user.region?.toJSON?.() || req.user.region || {}), pincode: req.user.region?.pincode || '' },
       status: 'pending',
     });
     await notifyRole('admin', {
