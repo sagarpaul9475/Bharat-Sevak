@@ -13,11 +13,11 @@ const userSchema = new mongoose.Schema({
     state: { type: String, default: '' },
     district: { type: String, default: '' },
     area: { type: String, default: '' },
-    pincode: { type: String, trim: true, match: [/^$|^\\d{6}$/, 'PIN code must be 6 digits'], default: '' },
+    pincode: { type: String, trim: true, match: [/^$|^\d{6}$/, 'PIN code must be 6 digits'], default: '' },
   },
   deliveryCoverage: {
     mode: { type: String, enum: ['local', 'cross_city'], default: 'local' },
-    pincodes: [{ type: String, trim: true, match: [/^\\d{6}$/, 'Each PIN code must be 6 digits'] }],
+    pincodes: [{ type: String, trim: true, match: [/^\d{6}$/, 'Each PIN code must be 6 digits'] }],
   },
   // Delivery Partner / Service Technician fields
   deliveryVehicleType: { type: String, enum: ['bike', 'bicycle', 'scooter', 'van', 'on_foot', 'other'], default: 'bike' },
