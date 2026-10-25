@@ -2,15 +2,24 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import PledgeContent from '../../components/PledgeContent';
+import '../../pledge.css';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [pledgeAccepted, setPledgeAccepted] = useState(false);
+  const [pledgeError, setPledgeError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!pledgeAccepted) {
+      setPledgeError('Please read and accept the Bharat Sevak pledge to sign in.');
+      return;
+    }
+    setPledgeError('');
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
@@ -50,6 +59,18 @@ export default function LoginPage() {
         <div className="card">
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <details className="pledge-panel" open>
+              <summary className="pledge-panel__summary">
+                <span>🇮🇳 Read Bharat Sevak Pledge &amp; Terms</span>
+                <span className="pledge-panel__hint">Please read before signing in</span>
+              </summary>
+              <div className="pledge-scroll"><PledgeContent compact /></div>
+            </details>
+            <label className="pledge-agreement">
+              <input type="checkbox" checked={pledgeAccepted} onChange={e => { setPledgeAccepted(e.target.checked); setPledgeError(''); }} />
+              <span>I have read and voluntarily agree to the <strong>Bharat Sevak Pledge &amp; Terms of Membership</strong>.</span>
+            </label>
+            {pledgeError && <p role="alert" className="pledge-error">{pledgeError}</p>}
             <div className="form-group">
               <label className="form-label">Email Address</label>
               <input className="form-input" type="email" placeholder="you@example.com"
