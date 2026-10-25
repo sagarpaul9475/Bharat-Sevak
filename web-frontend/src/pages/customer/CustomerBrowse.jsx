@@ -11,6 +11,7 @@ export default function CustomerBrowse() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [pincode, setPincode] = useState(user?.region?.pincode || '');
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
 
@@ -21,8 +22,8 @@ export default function CustomerBrowse() {
   const load = () => {
     setLoading(true);
     const apiCall = tab === 'products'
-      ? customerAPI.getProducts({ search })
-      : customerAPI.getServices({ search });
+      ? customerAPI.getProducts({ search, pincode: pincode.trim() })
+      : customerAPI.getServices({ search, pincode: pincode.trim() });
     apiCall
       .then(r => setItems(tab === 'products' ? r.data.products : r.data.services))
       .catch(() => toast.error('Failed to load items'))
@@ -30,6 +31,7 @@ export default function CustomerBrowse() {
   };
 
   useEffect(() => { load(); }, [tab]);
+  useEffect(() => { const timer = setTimeout(load, 350); return () => clearTimeout(timer); }, [pincode]);
   useEffect(() => {
     const timer = setTimeout(load, 500);
     return () => clearTimeout(timer);
@@ -176,6 +178,13 @@ export default function CustomerBrowse() {
         </button>
       </div>
 
+      <div className="card mb-4" style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+        <div className="form-group" style={{ flex: '1 1 220px', margin: 0 }}>
+          <label className="form-label">Shop by delivery PIN code</label>
+          <input className="form-input" inputMode="numeric" maxLength={6} placeholder="Enter 6-digit PIN code" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+        </div>
+        <p className="text-xs text-muted" style={{ flex: '1 1 220px', margin: 0 }}>Enter a destination PIN code to filter listings.</p>
+      </div>
       <div className="card mb-6 browse-toolbar">
         <div className="search-wrap" style={{ flex: 1 }}>
           <span className="search-icon">🔍</span>
