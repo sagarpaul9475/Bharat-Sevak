@@ -17,7 +17,7 @@ router.get('/products', async (req, res) => {
     if (state) filter['region.state'] = state;
     if (district) filter['region.district'] = district;
     if (area) filter['region.area'] = area;
-    if (pincode) { if (!/^\\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
+    if (pincode) { if (!/^\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
     if (req.query.provider) filter.provider = req.query.provider;
     if (search) filter.$or = [{ name: { $regex: search, $options: 'i' } }, { tags: { $in: [new RegExp(search, 'i')] } }];
     if (minPrice || maxPrice) filter.price = {};
@@ -37,7 +37,7 @@ router.get('/services', async (req, res) => {
     const filter = { status: 'approved' };
     if (serviceType) filter.serviceType = serviceType;
     if (state) filter['region.state'] = state;
-    if (pincode) { if (!/^\\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
+    if (pincode) { if (!/^\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
     if (req.query.provider) filter.provider = req.query.provider;
     if (search) filter.name = { $regex: search, $options: 'i' };
     const services = await Service.find(filter).populate('provider', 'name businessName region').sort('-createdAt')
@@ -60,7 +60,7 @@ router.post('/orders', verifyToken, async (req, res) => {
   try {
     const { items, paymentMethod, deliveryAddress, deliveryPincode, notes } = req.body;
     const destinationPincode = String(deliveryPincode || req.user.region?.pincode || '').trim();
-    if (!/^\\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' });
+    if (!/^\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' });
     if (!items || items.length === 0) return res.status(400).json({ message: 'No items in order' });
 
     if (!Array.isArray(items) || items.length === 0 || items.length > 30) {
