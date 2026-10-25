@@ -11,14 +11,20 @@ const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expires
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, phone, password, role, providerType, businessName, region } = req.body;
+    const { name, email, phone, password, role, providerType, businessName, region, deliveryCoverage } = req.body;
+    const normalizedRegion = { ...(region || {}) };
+    if (normalizedRegion.pincode && !/^\\d{6}$/.test(String(normalizedRegion.pincode))) return res.status(400).json({ message: 'PIN code must be exactly 6 digits' });
+    const normalizedCoverage = { mode: deliveryCoverage?.mode === 'cross_city' ? 'cross_city' : 'local', pincodes: Array.isArray(deliveryCoverage?.pincodes) ? [...new Set(deliveryCoverage.pincodes.map(String).map(p => p.trim()).filter(Boolean))] : [] };
+    if (normalizedCoverage.pincodes.some(p => !/^\\d{6}$/.test(p))) return res.status(400).json({ message: 'Every delivery PIN code must be exactly 6 digits' });
+    if (normalizedCoverage.mode === 'cross_city' && normalizedCoverage.pincodes.length === 0) return res.status(400).json({ message: 'Add at least one PIN code for cross-city delivery' });
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: 'Email already registered' });
 
     const hashed = await bcrypt.hash(password, 12);
     const userData = {
       name, email, phone, password: hashed, role: role || 'customer',
-      region: region || {},
+      region: normalizedRegion,
+      deliveryCoverage: role === 'delivery' ? normalizedCoverage : { mode: 'local', pincodes: [] },
     };
     if (role === 'provider') {
       userData.providerType = providerType || 'product';
