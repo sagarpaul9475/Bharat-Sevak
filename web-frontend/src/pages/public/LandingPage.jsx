@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import PledgeContent, { PLEDGE_TITLE } from '../../components/PledgeContent';
+import '../../pledge.css';
 
 const features = [
   { icon: '🛵', title: 'Delivery Services', desc: 'Find delivery workers for your orders across your locality' },
@@ -42,6 +44,7 @@ export default function LandingPage() {
           <Link to="/browse" className="btn btn-secondary btn-sm">🛍️ Browse</Link>
           <Link to="/login" className="btn btn-secondary btn-sm">Login</Link>
           <Link to="/register" className="btn btn-primary btn-sm">Get Started</Link>
+          <Link to="/pledge" className="btn btn-secondary btn-sm">Pledge &amp; Terms</Link>
         </div>
       </nav>
 
@@ -140,6 +143,29 @@ export default function LandingPage() {
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link to="/register" className="btn btn-primary" style={{ padding: '12px 30px', fontSize: 15 }}>Start Today →</Link>
           <Link to="/browse" className="btn btn-secondary" style={{ padding: '12px 30px', fontSize: 15 }}>Browse Services</Link>
+        </div>
+      </section>
+
+      {/* Pledge preview and full terms link */}
+      <section style={{ padding: '28px 16px', background: 'rgba(255,255,255,0.94)', color: '#111827' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 3.5vw, 30px)', marginBottom: 8, color: '#111827' }}>{PLEDGE_TITLE}</h2>
+          <p style={{ textAlign: 'center', color: '#374151', marginBottom: 18 }}>
+            Service Is Our Religion | Humanity Is Our Identity
+          </p>
+          <details className="pledge-panel">
+            <summary className="pledge-panel__summary">
+              <span>Read the full Bharat Sevak pledge</span>
+              <span className="pledge-panel__hint">10 sections · Opens here</span>
+            </summary>
+            <div className="pledge-scroll"><PledgeContent /></div>
+          </details>
+          <p style={{ textAlign: 'center', color: '#374151', marginTop: 14, fontSize: 13 }}>
+            All customers, providers, delivery partners and other members must accept this pledge at sign in and registration.
+          </p>
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            <Link to="/pledge" className="pledge-home-link">Open the full pledge page →</Link>
+          </div>
         </div>
       </section>
 
