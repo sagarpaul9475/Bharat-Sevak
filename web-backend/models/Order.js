@@ -37,7 +37,6 @@ const orderSchema = new mongoose.Schema({
   providerPayoutStatus: { type: String, enum: ['not_applicable', 'pending_onboarding', 'pending_configuration', 'pending', 'transferred', 'failed'], default: 'not_applicable' },
   deliveryAddress: { type: String, default: '' },
   deliveryPincode: { type: String, trim: true, match: [/^$|^\\d{6}$/, 'Delivery PIN code must be 6 digits'], default: '' },
-  deliveryPincode: { type: String, trim: true, match: [/^$|^\\d{6}$/, 'Delivery PIN code must be 6 digits'], default: '' },
   orderType: { type: String, enum: ['product', 'service', 'mixed'], default: 'product' },
   // Secure Completion / Delivery OTP
   deliveryOtp: { type: String, default: '' },
