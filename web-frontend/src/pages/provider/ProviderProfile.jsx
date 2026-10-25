@@ -60,7 +60,7 @@ export default function ProviderProfile() {
     name: user?.name || '', phone: user?.phone || '', businessName: user?.businessName || '',
     businessDesc: user?.businessDesc || '', address: user?.address || '',
     providerType: user?.providerType || 'product', state: user?.region?.state || '',
-    district: user?.region?.district || '', area: user?.region?.area || ''
+    district: user?.region?.district || '', area: user?.region?.area || '', pincode: user?.region?.pincode || ''
   });
   const [saving, setSaving] = useState(false);
   const [isVerified, setIsVerified] = useState(Boolean(user?.isVerified));
@@ -134,7 +134,7 @@ export default function ProviderProfile() {
     try {
       await providerAPI.updateProfile({
         name: form.name, phone: form.phone, businessName: form.businessName, businessDesc: form.businessDesc, address: form.address, providerType: form.providerType,
-        region: { state: form.state, district: form.district, area: form.area }
+        region: { state: form.state, district: form.district, area: form.area, pincode: form.pincode }
       });
       toast.success('Profile updated successfully');
     } catch (error) {
@@ -330,6 +330,10 @@ export default function ProviderProfile() {
             <div className="form-group">
               <label className="form-label">District</label>
               <input className="form-input" value={form.district} onChange={e => setForm({ ...form, district: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">PIN Code</label>
+              <input className="form-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={form.pincode} onChange={e => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
             </div>
             <div className="form-group full">
               <label className="form-label">Area / Locality</label>
