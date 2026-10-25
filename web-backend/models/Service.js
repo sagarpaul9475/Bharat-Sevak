@@ -17,6 +17,7 @@ const serviceSchema = new mongoose.Schema({
     state: { type: String, default: '' },
     district: { type: String, default: '' },
     area: { type: String, default: '' },
+    pincode: { type: String, trim: true, match: [/^$|^\\d{6}$/, 'PIN code must be 6 digits'], default: '' },
   },
 }, { timestamps: true });
 
