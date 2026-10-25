@@ -8,6 +8,7 @@ import './theme.css';
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage';
 import RegisterPage from './pages/public/RegisterPage';
+import PledgePage from './pages/public/PledgePage';
 
 // Admin
 import AdminLayout from './layouts/AdminLayout';
@@ -69,6 +70,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      <Route path="/pledge" element={<PledgePage />} />
 
       {/* Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminLayout /></ProtectedRoute>}>
