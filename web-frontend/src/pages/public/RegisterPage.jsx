@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import PledgeContent from '../../components/PledgeContent';
+import '../../pledge.css';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -24,9 +26,16 @@ export default function RegisterPage() {
     area: ''
   });
   const [loading, setLoading] = useState(false);
+  const [pledgeAccepted, setPledgeAccepted] = useState(false);
+  const [pledgeError, setPledgeError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!pledgeAccepted) {
+      setPledgeError('Please read and accept the Bharat Sevak pledge to create an account.');
+      return;
+    }
+    setPledgeError('');
     setLoading(true);
     try {
       const payload = {
@@ -119,7 +128,19 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="form-grid">
+            <details className="pledge-panel" open>
+              <summary className="pledge-panel__summary">
+                <span>🇮🇳 Read Bharat Sevak Pledge &amp; Terms</span>
+                <span className="pledge-panel__hint">Acceptance required for every role</span>
+              </summary>
+              <div className="pledge-scroll"><PledgeContent compact /></div>
+            </details>
+            <label className="pledge-agreement">
+              <input type="checkbox" checked={pledgeAccepted} onChange={e => { setPledgeAccepted(e.target.checked); setPledgeError(''); }} />
+              <span>I have read and voluntarily agree to the <strong>Bharat Sevak Pledge &amp; Terms of Membership</strong>.</span>
+            </label>
+            {pledgeError && <p role="alert" className="pledge-error">{pledgeError}</p>}
+            <div className="form-grid" style={{ marginTop: 18 }}>
               <div className="form-group">
                 <label className="form-label">Full Name *</label>
                 <input className="form-input" placeholder="Your name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
