@@ -26,7 +26,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   const [isBroadcastingGps, setIsBroadcastingGps] = useState(false);
-  
+
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({ pickup: null, dropoff: null, driver: null, routeLine: null });
@@ -55,7 +55,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
     fetchTracking();
 
     // 2. Connect socket for real-time order updates
-    const socket = io(import.meta.env.VITE_API_URL?.replace(/\\/api\\/?$/, '') || window.location.origin, { transports: ['websocket', 'polling'] });
+    const socket = io(import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || window.location.origin, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -315,7 +315,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
   return (
     <div className="modal-overlay" style={{ zIndex: 10000 }} onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}>
       <div className="modal-box" style={{ maxWidth: 840, width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-        
+
         {/* Modal Header */}
         <div style={{ background: '#0F172A', padding: '14px 16px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -337,7 +337,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
 
         {/* Modal Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
-          
+
           {loading ? (
             <div className="loading-center" style={{ minHeight: 300 }}><div className="spinner" /></div>
           ) : !order ? (
@@ -402,7 +402,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
               {/* Status Pipeline Tracker */}
               <div style={{ background: '#1E293B', borderRadius: 12, padding: '14px 18px', marginBottom: 18, border: '1px solid #334155' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
-                  
+
                   {[
                     { key: 'confirmed', label: 'Accepted', icon: '📝' },
                     { key: 'assigned', label: 'Assigned', icon: '👤' },
@@ -475,7 +475,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
 
               {/* Partner & Location Cards */}
               <div className="grid-2" style={{ gap: 14, marginBottom: 18 }}>
-                
+
                 {/* Delivery Agent / Technician Card */}
                 <div style={{ background: '#1E293B', padding: 14, borderRadius: 10, border: '1px solid #334155' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -540,7 +540,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
                         📍 Mark Arrived at Destination
                       </button>
                     )}
-                    
+
                     {/* Live GPS Broadcast */}
                     <button
                       className={`btn btn-sm ${isBroadcastingGps ? 'btn-danger' : 'btn-secondary'}`}
