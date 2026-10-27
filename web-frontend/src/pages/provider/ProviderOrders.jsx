@@ -6,6 +6,20 @@ import LiveTrackingModal from '../../components/LiveTrackingModal';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 
+function PostOfficeDispatchForm({ order, onSave }) {
+  const [form, setForm] = useState({ preferredPostOffice: order.postOfficeDetails?.preferredPostOffice || '', postOfficeAddress: order.postOfficeDetails?.postOfficeAddress || '', trackingNumber: order.postOfficeDetails?.trackingNumber || '', dispatchNotes: order.postOfficeDetails?.dispatchNotes || '' });
+  const [saving, setSaving] = useState(false);
+  const submit = async (status) => { setSaving(true); try { await onSave({ ...form, status }); } catch (e) { toast.error(e.response?.data?.message || 'Could not save postal details'); } finally { setSaving(false); } };
+  return <div className="mt-2 p-3 rounded" style={{ background: 'var(--navy-border)' }}>
+    <strong>Postal dispatch coordination</strong>
+    <label className="form-label mt-2">Selected post office<input className="form-input mt-1" value={form.preferredPostOffice} onChange={e => setForm({ ...form, preferredPostOffice: e.target.value })} placeholder="Post office name" /></label>
+    <label className="form-label mt-2">Post office address<input className="form-input mt-1" value={form.postOfficeAddress} onChange={e => setForm({ ...form, postOfficeAddress: e.target.value })} placeholder="Address of selected post office" /></label>
+    <label className="form-label mt-2">Tracking / receipt number<input className="form-input mt-1" value={form.trackingNumber} onChange={e => setForm({ ...form, trackingNumber: e.target.value })} placeholder="Enter after booking postage" /></label>
+    <label className="form-label mt-2">Dispatch notes<textarea className="form-input mt-1" rows={2} value={form.dispatchNotes} onChange={e => setForm({ ...form, dispatchNotes: e.target.value })} /></label>
+    <div className="flex gap-2 mt-2"><button className="btn btn-secondary" disabled={saving} onClick={() => submit()}>Save details</button><button className="btn btn-primary" disabled={saving || !form.preferredPostOffice.trim() || !form.trackingNumber.trim()} onClick={() => submit('dispatched')}>Mark dispatched</button></div>
+  </div>;
+}
+
 export default function ProviderOrders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -189,6 +203,19 @@ export default function ProviderOrders() {
                       📞 {o.customer?.phone}
                     </a>
                     {o.deliveryAddress && <div className="text-sm mt-1">📍 {o.deliveryAddress}</div>}
+                    {o.shippingAddress && <div className="text-sm mt-2 p-2 rounded" style={{ background: 'var(--navy-border)' }}>
+                      <strong>Shipping recipient:</strong> {o.shippingAddress.fullName}<br/>
+                      <strong>Delivery phone:</strong> <a href={`tel:${o.shippingAddress.phone}`} style={{ color: '#F59E0B' }}>{o.shippingAddress.phone}</a><br/>
+                      {o.shippingAddress.addressLine1}{o.shippingAddress.addressLine2 ? `, ${o.shippingAddress.addressLine2}` : ''}{o.shippingAddress.landmark ? `, Landmark: ${o.shippingAddress.landmark}` : ''}<br/>
+                      {[o.shippingAddress.city, o.shippingAddress.district, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', ')}<br/>
+                      {o.shippingAddress.locationInstructions && <><strong>Instructions:</strong> {o.shippingAddress.locationInstructions}<br/></>}
+                      {o.shippingAddress.latitude != null && o.shippingAddress.longitude != null && <a href={`https://www.google.com/maps?q=${o.shippingAddress.latitude},${o.shippingAddress.longitude}`} target="_blank" rel="noreferrer">📍 Open customer pin in Maps</a>}
+                    </div>}
+                    <div className="text-sm mt-2"><strong>Delivery preference:</strong> {o.deliveryPreference === 'post_office' ? '📮 Post office / postal service' : '🛵 Delivery driver'}</div>
+                    {o.customer?.email && <div className="text-sm mt-1">✉️ <a href={`mailto:${o.customer.email}`} style={{ color: '#F59E0B' }}>{o.customer.email}</a></div>}
+                    {o.deliveryPreference === 'post_office' && (
+                      <PostOfficeDispatchForm order={o} onSave={async payload => { await providerAPI.updatePostOffice(o._id, payload); toast.success('Postal delivery details saved'); load(); }} />
+                    )}
                     {o.notes && <div className="text-sm mt-2 p-2 rounded" style={{ background: 'var(--navy-border)' }}><strong>Note:</strong> {o.notes}</div>}
 
                     {/* Assigned Worker Info */}
