@@ -168,7 +168,7 @@ router.get('/orders', providerGuard, async (req, res) => {
     const { status, page = 1, limit = 20 } = req.query;
     const filter = { provider: req.user._id };
     if (status) filter.status = status;
-    const orders = await Order.find(filter).populate('customer', 'name phone email address').sort('-createdAt')
+    const orders = await Order.find(filter).populate('customer', 'name phone email address').populate('assignedTo', 'name phone email role').sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));
     const total = await Order.countDocuments(filter);
     res.json({ orders, total, pages: Math.ceil(total / limit) });

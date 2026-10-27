@@ -78,7 +78,7 @@ router.get('/tasks', verifyToken, async (req, res) => {
     let tasks = await Order.find(filter)
       .populate('customer', 'name phone email address')
       .populate('provider', 'name businessName phone address')
-      .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization')
+      .populate('assignedTo', 'name phone email role deliveryVehicleType serviceSpecialization')
       .sort('-createdAt')
       .limit(50);
 
@@ -176,35 +176,15 @@ router.put('/orders/:id/assign', verifyToken, async (req, res) => {
     order.assignedTo = workerUser ? workerUser._id : (assignedTo || undefined);
     order.assignedName = assignedName || workerUser?.name || 'Assigned Partner';
     order.assignedPhone = assignedPhone || workerUser?.phone || '';
+    order.deliveryPartnerContact = { name: workerUser?.name || order.assignedName, phone: workerUser?.phone || order.assignedPhone, email: workerUser?.email || '' };
     order.assignedRole = assignedRole || (order.orderType === 'service' ? 'technician' : 'delivery_man');
     order.status = 'assigned';
     order.fulfillmentStatus = 'assigned';
 
-    // Set pickup & dropoff coordinates if empty
-    if (!order.pickupLocation?.lat) {
-      order.pickupLocation = {
-        lat: 22.5726,
-        lng: 88.3639,
-        address: 'Provider Pickup Point'
-      };
-    }
-    if (!order.dropoffLocation?.lat) {
-      order.dropoffLocation = {
-        lat: 22.5850,
-        lng: 88.3750,
-        address: order.deliveryAddress || 'Customer Destination'
-      };
-    }
-
-    // Set initial driver live location near pickup
-    order.liveLocation = {
-      lat: order.pickupLocation.lat,
-      lng: order.pickupLocation.lng,
-      heading: 0,
-      speed: 0,
-      isLive: true,
-      updatedAt: new Date(),
-    };
+    // Keep real coordinates only; do not fabricate pickup, destination, or driver GPS positions.
+    if (!order.pickupLocation?.lat) order.pickupLocation = { address: order.pickupLocation?.address || 'Provider Pickup Point' };
+    if (!order.dropoffLocation?.lat) order.dropoffLocation = { address: order.deliveryAddress || 'Customer Destination' };
+    if (!order.liveLocation?.lat || !order.liveLocation?.lng) order.liveLocation = { isLive: false };
 
     order.statusHistory.push({
       status: 'assigned',
@@ -306,10 +286,16 @@ router.put('/orders/:id/location', verifyToken, async (req, res) => {
 
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
+    const isAssignedWorker = String(order.assignedTo || '') === String(req.user._id);
+    const isProvider = String(order.provider || '') === String(req.user._id);
+    const isCustomer = String(order.customer || '') === String(req.user._id);
+    if (!isAssignedWorker && !isProvider && !isCustomer && req.user.role !== 'admin') return res.status(403).json({ message: 'Only this order’s customer, provider, assigned delivery partner or admin can share its location' });
+    const latitude = Number(lat), longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return res.status(400).json({ message: 'Invalid latitude or longitude' });
 
     const newLocation = {
-      lat: Number(lat),
-      lng: Number(lng),
+      lat: latitude,
+      lng: longitude,
       heading: Number(heading) || 0,
       speed: Number(speed) || 0,
       isLive: Boolean(isLive),
@@ -317,6 +303,7 @@ router.put('/orders/:id/location', verifyToken, async (req, res) => {
     };
 
     order.liveLocation = newLocation;
+    if (isAssignedWorker) { order.deliveryPartnerContact = { name: req.user.name || order.assignedName, phone: req.user.phone || order.assignedPhone, email: req.user.email || '' }; }
     // Keep last 40 points in history
     order.locationHistory.push({ lat: Number(lat), lng: Number(lng), timestamp: new Date() });
     if (order.locationHistory.length > 40) {

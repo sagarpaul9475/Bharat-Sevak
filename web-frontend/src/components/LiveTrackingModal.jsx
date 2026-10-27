@@ -55,7 +55,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
     fetchTracking();
 
     // 2. Connect socket for real-time order updates
-    const socket = io('http://localhost:4000', { transports: ['websocket', 'polling'] });
+    const socket = io(import.meta.env.VITE_API_URL?.replace(/\\/api\\/?$/, '') || window.location.origin, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -107,9 +107,10 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
     const L = window.L;
     if (!L) return;
 
-    const pickup = order.pickupLocation || { lat: 22.5726, lng: 88.3639 };
-    const dropoff = order.dropoffLocation || { lat: 22.5850, lng: 88.3750 };
-    const driverLoc = order.liveLocation || pickup;
+    const pickup = order.pickupLocation && Number.isFinite(Number(order.pickupLocation.lat)) && Number.isFinite(Number(order.pickupLocation.lng)) ? order.pickupLocation : null;
+    const dropoff = order.dropoffLocation && Number.isFinite(Number(order.dropoffLocation.lat)) && Number.isFinite(Number(order.dropoffLocation.lng)) ? order.dropoffLocation : null;
+    const driverLoc = order.liveLocation && Number.isFinite(Number(order.liveLocation.lat)) && Number.isFinite(Number(order.liveLocation.lng)) ? order.liveLocation : pickup || dropoff;
+    if (!pickup && !dropoff && !driverLoc) return;
 
     const map = L.map(mapContainerRef.current, {
       center: [driverLoc.lat, driverLoc.lng],
@@ -142,38 +143,25 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
     };
 
     // Add Shop/Provider Marker
-    const pickupMarker = L.marker([pickup.lat, pickup.lng], {
-      icon: createCustomIcon('🏪', order.provider?.businessName || 'Shop / Pickup', '#F59E0B')
-    }).addTo(map).bindPopup(`<strong>${order.provider?.businessName || 'Provider'}</strong><br/>Pickup / Source Point`);
+    const pickupMarker = pickup ? L.marker([pickup.lat, pickup.lng], { icon: createCustomIcon('🏪', order.provider?.businessName || 'Shop / Pickup', '#F59E0B') }).addTo(map).bindPopup(`<strong>${order.provider?.businessName || 'Provider'}</strong><br/>Pickup / Source Point`) : null;
 
     // Add Customer Marker
-    const dropoffMarker = L.marker([dropoff.lat, dropoff.lng], {
-      icon: createCustomIcon('🏠', 'Customer Destination', '#10B981')
-    }).addTo(map).bindPopup(`<strong>Delivery Destination</strong><br/>${order.deliveryAddress || 'Customer Address'}`);
+    const dropoffMarker = dropoff ? L.marker([dropoff.lat, dropoff.lng], { icon: createCustomIcon('🏠', 'Customer Destination', '#10B981') }).addTo(map).bindPopup(`<strong>Delivery Destination</strong><br/>${order.deliveryAddress || 'Customer Address'}`) : null;
 
     // Add Driver / Live Location Marker
     const isService = order.orderType === 'service';
     const driverIcon = isService ? '🔧' : '🛵';
     const driverLabel = order.assignedName ? `${driverIcon} ${order.assignedName}` : 'Partner En Route';
-    const driverMarker = L.marker([driverLoc.lat, driverLoc.lng], {
-      icon: createCustomIcon(driverIcon, driverLabel, '#3B82F6')
-    }).addTo(map).bindPopup(`<strong>Live Partner Location</strong><br/>Status: ${order.status.replace('_', ' ')}`);
+    const driverMarker = order.liveLocation?.isLive && driverLoc ? L.marker([driverLoc.lat, driverLoc.lng], { icon: createCustomIcon(driverIcon, driverLabel, '#3B82F6') }).addTo(map).bindPopup(`<strong>Live Partner Location</strong><br/>Status: ${order.status.replace('_', ' ')}`) : null;
 
     // Draw route polyline
-    const routeLine = L.polyline([
-      [pickup.lat, pickup.lng],
-      [driverLoc.lat, driverLoc.lng],
-      [dropoff.lat, dropoff.lng]
-    ], {
-      color: '#3B82F6',
-      weight: 4,
-      dashArray: '8, 8',
-      opacity: 0.8
-    }).addTo(map);
+    const routePoints = [pickup, order.liveLocation?.isLive ? driverLoc : null, dropoff].filter(Boolean).map(point => [point.lat, point.lng]);
+    const routeLine = routePoints.length > 1 ? L.polyline(routePoints, { color: '#3B82F6', weight: 4, dashArray: '8, 8', opacity: 0.8 }).addTo(map) : null;
 
     // Fit bounds to show all markers
-    const group = L.featureGroup([pickupMarker, dropoffMarker, driverMarker]);
-    map.fitBounds(group.getBounds().pad(0.2));
+    const visibleMarkers = [pickupMarker, dropoffMarker, driverMarker].filter(Boolean);
+    if (visibleMarkers.length > 1) map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.2));
+    else map.setView([driverLoc.lat, driverLoc.lng], 15);
 
     markersRef.current = { pickup: pickupMarker, dropoff: dropoffMarker, driver: driverMarker, routeLine };
     mapInstanceRef.current = map;
@@ -181,20 +169,17 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
 
   // Update Driver Marker on live position changes
   const updateDriverMarker = (newLoc) => {
-    if (!newLoc || !markersRef.current.driver || !mapInstanceRef.current) return;
+    if (!newLoc || !mapInstanceRef.current) return;
     const L = window.L;
     if (!L) return;
-
-    markersRef.current.driver.setLatLng([newLoc.lat, newLoc.lng]);
+    if (markersRef.current.driver) markersRef.current.driver.setLatLng([newLoc.lat, newLoc.lng]);
+    else if (order?.assignedTo || order?.assignedName) {
+      markersRef.current.driver = L.marker([newLoc.lat, newLoc.lng]).addTo(mapInstanceRef.current).bindPopup('Live delivery partner location');
+    } else return;
 
     if (order && markersRef.current.routeLine) {
-      const pickup = order.pickupLocation || { lat: 22.5726, lng: 88.3639 };
-      const dropoff = order.dropoffLocation || { lat: 22.5850, lng: 88.3750 };
-      markersRef.current.routeLine.setLatLngs([
-        [pickup.lat, pickup.lng],
-        [newLoc.lat, newLoc.lng],
-        [dropoff.lat, dropoff.lng]
-      ]);
+      const points = [order.pickupLocation, newLoc, order.dropoffLocation].filter(point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng))).map(point => [point.lat, point.lng]);
+      markersRef.current.routeLine.setLatLngs(points);
     }
   };
 
@@ -233,6 +218,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
 
   // 6. Test Simulator: Smoothly animates driver from pickup to dropoff
   const toggleSimulator = () => {
+    if (!isDelivery) { toast.error('The movement simulator is for local testing only; use it only as the assigned delivery partner.'); return; }
     if (isSimulating) {
       clearInterval(simIntervalRef.current);
       setIsSimulating(false);
@@ -241,10 +227,11 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
     }
 
     if (!order) return;
-    const startLat = order.liveLocation?.lat || order.pickupLocation?.lat || 22.5726;
-    const startLng = order.liveLocation?.lng || order.pickupLocation?.lng || 88.3639;
-    const targetLat = order.dropoffLocation?.lat || 22.5850;
-    const targetLng = order.dropoffLocation?.lng || 88.3750;
+    const startLat = order.liveLocation?.lat ?? order.pickupLocation?.lat;
+    const startLng = order.liveLocation?.lng ?? order.pickupLocation?.lng;
+    const targetLat = order.dropoffLocation?.lat;
+    const targetLng = order.dropoffLocation?.lng;
+    if (![startLat, startLng, targetLat, targetLng].every(value => Number.isFinite(Number(value)))) { toast.error('Real pickup and destination coordinates are required; use the address map instead.'); return; }
 
     let step = 0;
     const totalSteps = 25;
@@ -288,6 +275,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
       return;
     }
 
+    if (!isDelivery) { toast.error('Only the assigned delivery partner can broadcast live GPS for this order.'); return; }
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
       return;
