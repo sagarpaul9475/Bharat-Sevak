@@ -181,8 +181,8 @@ router.get('/orders', verifyToken, async (req, res) => {
     const filter = { customer: req.user._id };
     if (status) filter.status = status;
     const orders = await Order.find(filter)
-      .populate('provider', 'name businessName phone address')
-      .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization')
+      .populate('provider', 'name businessName phone email address')
+      .populate('assignedTo', 'name phone email deliveryVehicleType serviceSpecialization')
       .sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));
     const total = await Order.countDocuments(filter);
@@ -194,7 +194,7 @@ router.get('/orders/:id', verifyToken, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
       .populate('provider', 'name businessName phone address')
-      .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization');
+      .populate('assignedTo', 'name phone email deliveryVehicleType serviceSpecialization');
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) { res.status(500).json({ message: err.message }); }
