@@ -223,6 +223,7 @@ export default function CustomerOrders() {
                       </div>
                       <div>
                         <div>{o.provider?.businessName || o.provider?.name}</div>
+                        {o.provider?.email && <a href={`mailto:${o.provider.email}`} style={{ display: 'block', fontSize: 12, color: '#F59E0B' }}>✉️ {o.provider.email}</a>}
                         {o.provider?.phone && (
                           <a
                             href={`tel:${o.provider.phone}`}
@@ -249,6 +250,7 @@ export default function CustomerOrders() {
                             📞 {o.assignedPhone || o.assignedTo?.phone}
                           </a>
                         )}
+                        {o.assignedTo?.email && <a href={`mailto:${o.assignedTo.email}`} style={{ display: 'block', color: '#F59E0B', marginTop: 4 }}>✉️ {o.assignedTo.email}</a>}
                       </div>
                     ) : null}
                   </div>
