@@ -9,4 +9,4 @@ Disallow: /grievance
 Disallow: /login
 Disallow: /register
 
-Sitemap: https://k-1.onrender.com/sitemap.xml
+Sitemap: https://bharat-sevak-1.onrender.com/sitemap.xml
