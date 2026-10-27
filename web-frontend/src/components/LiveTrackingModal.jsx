@@ -218,6 +218,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
 
   // 6. Test Simulator: Smoothly animates driver from pickup to dropoff
   const toggleSimulator = () => {
+    if (!isDelivery) { toast.error('The movement simulator is for local testing only; use it only as the assigned delivery partner.'); return; }
     if (isSimulating) {
       clearInterval(simIntervalRef.current);
       setIsSimulating(false);
@@ -274,6 +275,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
       return;
     }
 
+    if (!isDelivery) { toast.error('Only the assigned delivery partner can broadcast live GPS for this order.'); return; }
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
       return;
