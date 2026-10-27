@@ -176,35 +176,15 @@ router.put('/orders/:id/assign', verifyToken, async (req, res) => {
     order.assignedTo = workerUser ? workerUser._id : (assignedTo || undefined);
     order.assignedName = assignedName || workerUser?.name || 'Assigned Partner';
     order.assignedPhone = assignedPhone || workerUser?.phone || '';
+    order.deliveryPartnerContact = { name: workerUser?.name || order.assignedName, phone: workerUser?.phone || order.assignedPhone, email: workerUser?.email || '' };
     order.assignedRole = assignedRole || (order.orderType === 'service' ? 'technician' : 'delivery_man');
     order.status = 'assigned';
     order.fulfillmentStatus = 'assigned';
 
-    // Set pickup & dropoff coordinates if empty
-    if (!order.pickupLocation?.lat) {
-      order.pickupLocation = {
-        lat: 22.5726,
-        lng: 88.3639,
-        address: 'Provider Pickup Point'
-      };
-    }
-    if (!order.dropoffLocation?.lat) {
-      order.dropoffLocation = {
-        lat: 22.5850,
-        lng: 88.3750,
-        address: order.deliveryAddress || 'Customer Destination'
-      };
-    }
-
-    // Set initial driver live location near pickup
-    order.liveLocation = {
-      lat: order.pickupLocation.lat,
-      lng: order.pickupLocation.lng,
-      heading: 0,
-      speed: 0,
-      isLive: true,
-      updatedAt: new Date(),
-    };
+    // Keep real coordinates only; do not fabricate pickup, destination, or driver GPS positions.
+    if (!order.pickupLocation?.lat) order.pickupLocation = { address: order.pickupLocation?.address || 'Provider Pickup Point' };
+    if (!order.dropoffLocation?.lat) order.dropoffLocation = { address: order.deliveryAddress || 'Customer Destination' };
+    if (!order.liveLocation?.lat || !order.liveLocation?.lng) order.liveLocation = { isLive: false };
 
     order.statusHistory.push({
       status: 'assigned',
