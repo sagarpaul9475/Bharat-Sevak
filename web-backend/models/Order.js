@@ -36,6 +36,8 @@ const orderSchema = new mongoose.Schema({
   razorpayTransferId: { type: String, default: '' },
   providerPayoutStatus: { type: String, enum: ['not_applicable', 'pending_onboarding', 'pending_configuration', 'pending', 'transferred', 'failed'], default: 'not_applicable' },
   deliveryAddress: { type: String, default: '' },
+  providerContact: { name: { type: String, default: '' }, phone: { type: String, default: '' }, email: { type: String, default: '' } },
+  deliveryPartnerContact: { name: { type: String, default: '' }, phone: { type: String, default: '' }, email: { type: String, default: '' } },
   shippingAddress: {
     fullName: { type: String, default: '' }, phone: { type: String, default: '' },
     addressLine1: { type: String, default: '' }, addressLine2: { type: String, default: '' }, landmark: { type: String, default: '' },
