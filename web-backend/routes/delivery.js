@@ -78,7 +78,7 @@ router.get('/tasks', verifyToken, async (req, res) => {
     let tasks = await Order.find(filter)
       .populate('customer', 'name phone email address')
       .populate('provider', 'name businessName phone address')
-      .populate('assignedTo', 'name phone deliveryVehicleType serviceSpecialization')
+      .populate('assignedTo', 'name phone email role deliveryVehicleType serviceSpecialization')
       .sort('-createdAt')
       .limit(50);
 
