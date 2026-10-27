@@ -1,0 +1,59 @@
+.receipt-actions { margin-top: 14px; }
+.receipt-actions > button { margin-bottom: 12px; }
+.receipt-paper { display: none; }
+.receipt-brand { display:flex; align-items:center; gap:12px; color:#172033; }
+.receipt-brand > div:last-child { display:flex; flex-direction:column; gap:3px; }
+.receipt-brand strong { font-size:20px; letter-spacing:.2px; }
+.receipt-brand small { font-size:9px; color:#5f6878; }
+.receipt-brand-mark { width:42px; height:42px; display:flex; flex-direction:column; border:1px solid #d1d5db; border-radius:50%; overflow:hidden; flex-shrink:0; }
+.receipt-saffron,.receipt-white,.receipt-green { flex:1; display:flex; align-items:center; justify-content:center; }
+.receipt-saffron { background:#ff9933; }
+.receipt-white { background:#fff; color:#1c4e9b; font-size:10px; }
+.receipt-green { background:#138808; }
+.receipt-header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.receipt-title { display:flex; flex-direction:column; align-items:flex-end; gap:4px; color:#172033; }
+.receipt-title strong { font-size:21px; letter-spacing:1px; }
+.receipt-title span { color:#596579; font-size:11px; }
+.receipt-rule { height:3px; background:linear-gradient(90deg,#ff9933 0 33.3%,#fff 33.3% 66.6%,#138808 66.6%); border:1px solid #e5e7eb; margin:18px 0; }
+.receipt-meta { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; padding:12px; background:#f4f6f8; border-radius:6px; }
+.receipt-meta > div,.receipt-payment > div { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.receipt-meta small,.receipt-payment small { color:#657083; font-size:9px; letter-spacing:.5px; }
+.receipt-meta strong,.receipt-payment strong { color:#182235; font-size:11px; overflow-wrap:anywhere; }
+.receipt-parties { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin:22px 0; }
+.receipt-parties > div { display:flex; flex-direction:column; gap:5px; color:#263144; font-size:11px; overflow-wrap:anywhere; }
+.receipt-parties h3 { font-size:10px; color:#657083; letter-spacing:.7px; margin:0 0 5px; }
+.receipt-parties strong { font-size:13px; color:#172033; }
+.receipt-table { width:100%; border-collapse:collapse; font-size:11px; }
+.receipt-table th { text-align:left; padding:10px 7px; background:#172033; color:#fff; }
+.receipt-table td { padding:10px 7px; border-bottom:1px solid #e2e6eb; color:#253044; overflow-wrap:anywhere; }
+.receipt-number { text-align:right !important; white-space:nowrap; }
+.receipt-total { display:flex; align-items:center; justify-content:space-between; padding:15px 7px; border-bottom:1px solid #d9dee6; color:#172033; }
+.receipt-total span { font-size:14px; font-weight:700; }
+.receipt-total strong { font-size:22px; }
+.receipt-payment { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; background:#f4f6f8; border-radius:6px; padding:12px; margin-top:12px; }
+.receipt-note { margin-top:14px; color:#39465a; font-size:11px; }
+.receipt-footer { display:flex; flex-direction:column; gap:5px; align-items:center; text-align:center; border-top:1px solid #e2e6eb; padding-top:16px; margin-top:26px; color:#657083; font-size:9px; }
+.receipt-footer strong { color:#172033; font-size:12px; }
+@media print {
+  @page { size:A4; margin:14mm; }
+  body * { visibility:hidden !important; }
+  .receipt-paper, .receipt-paper * { visibility:visible !important; }
+  .receipt-paper { display:block !important; position:absolute !important; left:0 !important; top:0 !important; width:100% !important; margin:0 !important; padding:0 !important; border:0 !important; box-shadow:none !important; color:#172033 !important; background:#fff !important; font-family:Arial,Helvetica,sans-serif !important; }
+  .receipt-actions > button { display:none !important; }
+  .receipt-header,.receipt-parties,.receipt-meta,.receipt-payment,.receipt-total,.receipt-table,.receipt-note,.receipt-footer { break-inside:avoid; }
+  .receipt-table th { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+  a { color:inherit !important; text-decoration:none !important; }
+}
+@media screen {
+  .receipt-paper { background:#fff; border:1px solid #e2e6eb; border-radius:8px; padding:24px; color:#172033; max-width:900px; }
+}
+@media screen and (max-width:600px) {
+  .receipt-paper { padding:14px; }
+  .receipt-brand strong { font-size:16px; }
+  .receipt-brand small { font-size:8px; }
+  .receipt-meta { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .receipt-parties { grid-template-columns:1fr; gap:16px; }
+  .receipt-title strong { font-size:15px; }
+  .receipt-table { font-size:9px; }
+  .receipt-table th,.receipt-table td { padding:7px 4px; }
+}
