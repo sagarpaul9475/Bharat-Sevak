@@ -170,11 +170,12 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
   // Update Driver Marker on live position changes
   const updateDriverMarker = (newLoc) => {
     if (!newLoc || !mapInstanceRef.current) return;
-    if (!markersRef.current.driver) return;
     const L = window.L;
     if (!L) return;
-
-    markersRef.current.driver.setLatLng([newLoc.lat, newLoc.lng]);
+    if (markersRef.current.driver) markersRef.current.driver.setLatLng([newLoc.lat, newLoc.lng]);
+    else if (order?.assignedTo || order?.assignedName) {
+      markersRef.current.driver = L.marker([newLoc.lat, newLoc.lng]).addTo(mapInstanceRef.current).bindPopup('Live delivery partner location');
+    } else return;
 
     if (order && markersRef.current.routeLine) {
       const points = [order.pickupLocation, newLoc, order.dropoffLocation].filter(point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng))).map(point => [point.lat, point.lng]);
