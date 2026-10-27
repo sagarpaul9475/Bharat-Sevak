@@ -271,6 +271,19 @@ export default function CustomerOrders() {
                   <div className="text-sm">
                     <span className="font-bold text-muted uppercase mr-2">Destination:</span>
                     {o.deliveryAddress || 'Default Address'}
+                    {o.shippingAddress && <div className="mt-2">
+                      <div><strong>Recipient:</strong> {o.shippingAddress.fullName} · {o.shippingAddress.phone}</div>
+                      <div>{o.shippingAddress.addressLine1}{o.shippingAddress.addressLine2 ? `, ${o.shippingAddress.addressLine2}` : ''}{o.shippingAddress.landmark ? `, ${o.shippingAddress.landmark}` : ''}</div>
+                      <div>{[o.shippingAddress.city, o.shippingAddress.district, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', ')}</div>
+                      {o.shippingAddress.locationInstructions && <div><strong>Instructions:</strong> {o.shippingAddress.locationInstructions}</div>}
+                      {o.shippingAddress.latitude != null && o.shippingAddress.longitude != null && <a href={`https://www.google.com/maps?q=${o.shippingAddress.latitude},${o.shippingAddress.longitude}`} target="_blank" rel="noreferrer">Open delivery location in Maps</a>}
+                    </div>}
+                    <div className="mt-2"><strong>Delivery preference:</strong> {o.deliveryPreference === 'post_office' ? '📮 Post office / postal service' : '🛵 Delivery driver'}</div>
+                    {o.deliveryPreference === 'post_office' && o.postOfficeDetails && <div className="mt-1">
+                      {o.postOfficeDetails.preferredPostOffice && <div>Post office: {o.postOfficeDetails.preferredPostOffice} {o.postOfficeDetails.postOfficeAddress}</div>}
+                      {o.postOfficeDetails.trackingNumber && <div>Tracking / receipt: {o.postOfficeDetails.trackingNumber}</div>}
+                      {o.postOfficeDetails.dispatchNotes && <div>Dispatch notes: {o.postOfficeDetails.dispatchNotes}</div>}
+                    </div>}
                   </div>
 
                   <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
