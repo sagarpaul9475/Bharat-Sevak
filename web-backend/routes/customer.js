@@ -58,9 +58,16 @@ router.get('/menus', async (req, res) => {
 // ── Authenticated: Place Order ───────────────────────────────
 router.post('/orders', verifyToken, async (req, res) => {
   try {
-    const { items, paymentMethod, deliveryAddress, deliveryPincode, notes } = req.body;
+    const { items, paymentMethod, deliveryAddress, deliveryPincode, shippingAddress = {}, deliveryPreference = 'delivery_driver', notes } = req.body;
     const destinationPincode = String(deliveryPincode || req.user.region?.pincode || '').trim();
     if (!/^\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' })
+    const allowedDeliveryPreferences = ['delivery_driver', 'post_office'];
+    if (!allowedDeliveryPreferences.includes(deliveryPreference)) return res.status(400).json({ message: 'Choose a valid delivery preference' });
+    const ship = { ...shippingAddress, pincode: destinationPincode };
+    if (![ship.fullName, ship.phone, ship.addressLine1, ship.city, ship.state].every(v => String(v || '').trim())) return res.status(400).json({ message: 'Complete recipient name, phone, street address, city and state before ordering' });
+    if (!/^\+?[0-9\s()-]{7,20}$/.test(String(ship.phone).trim())) return res.status(400).json({ message: 'Enter a valid recipient phone number' });
+    if (ship.latitude != null && ship.latitude !== '' && (!Number.isFinite(Number(ship.latitude)) || Number(ship.latitude) < -90 || Number(ship.latitude) > 90)) return res.status(400).json({ message: 'Invalid delivery latitude' });
+    if (ship.longitude != null && ship.longitude !== '' && (!Number.isFinite(Number(ship.longitude)) || Number(ship.longitude) < -180 || Number(ship.longitude) > 180)) return res.status(400).json({ message: 'Invalid delivery longitude' });
     if (!items || items.length === 0) return res.status(400).json({ message: 'No items in order' });
 
     if (!Array.isArray(items) || items.length === 0 || items.length > 30) {
@@ -111,7 +118,7 @@ router.post('/orders', verifyToken, async (req, res) => {
     const orderType = (hasService && hasProduct) ? 'mixed' : hasService ? 'service' : 'product';
     const providerUser = await User.findById(providerId);
     const providerPin = String(providerUser?.region?.pincode || '');
-    const canProviderServeDestination = providerUser?.deliveryCoverage?.mode === 'cross_city' ? (providerUser.deliveryCoverage.pincodes || []).includes(destinationPincode) : (!providerPin || providerPin === destinationPincode);
+    const canProviderServeDestination = deliveryPreference === 'post_office' || (providerUser?.deliveryCoverage?.mode === 'cross_city' ? (providerUser.deliveryCoverage.pincodes || []).includes(destinationPincode) : (!providerPin || providerPin === destinationPincode));
     if (!canProviderServeDestination) return res.status(400).json({ message: 'This provider does not currently deliver to that PIN code' });
 
     // Initial coordinates (with subtle deterministic delta based on order count so points are distinct on map)
@@ -128,7 +135,10 @@ router.post('/orders', verifyToken, async (req, res) => {
       items: orderItems,
       totalAmount,
       paymentMethod: selectedPaymentMethod,
-      deliveryAddress: `${deliveryAddress || req.user.address || 'Customer Destination'}${deliveryAddress || req.user.address ? ', ' : ''}PIN: ${destinationPincode}`,
+      deliveryAddress: [ship.addressLine1, ship.addressLine2, ship.landmark ? `Landmark: ${ship.landmark}` : '', ship.city, ship.district, ship.state, `PIN: ${destinationPincode}`].filter(Boolean).join(', '),
+      shippingAddress: { ...ship, latitude: ship.latitude === '' || ship.latitude == null ? undefined : Number(ship.latitude), longitude: ship.longitude === '' || ship.longitude == null ? undefined : Number(ship.longitude) },
+      deliveryPreference,
+      postOfficeDetails: { preferredPostOffice: '', postOfficeAddress: '', trackingNumber: '', dispatchNotes: '' },
       deliveryPincode: destinationPincode,
       notes,
       orderType,
@@ -139,7 +149,8 @@ router.post('/orders', verifyToken, async (req, res) => {
         lng: baseLng,
       },
       dropoffLocation: {
-        address: deliveryAddress || req.user.address || 'Customer Destination',
+        address: [ship.addressLine1, ship.addressLine2, ship.city, ship.state, `PIN: ${destinationPincode}`].filter(Boolean).join(', '),
+        ...(ship.latitude != null && ship.latitude !== '' && ship.longitude != null && ship.longitude !== '' ? { lat: Number(ship.latitude), lng: Number(ship.longitude) } : {}),
         lat: dropLat,
         lng: dropLng,
       },

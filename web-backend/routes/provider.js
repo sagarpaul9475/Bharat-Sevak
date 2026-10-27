@@ -168,10 +168,31 @@ router.get('/orders', providerGuard, async (req, res) => {
     const { status, page = 1, limit = 20 } = req.query;
     const filter = { provider: req.user._id };
     if (status) filter.status = status;
-    const orders = await Order.find(filter).populate('customer', 'name phone address').sort('-createdAt')
+    const orders = await Order.find(filter).populate('customer', 'name phone email address').sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));
     const total = await Order.countDocuments(filter);
     res.json({ orders, total, pages: Math.ceil(total / limit) });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.put('/orders/:id/post-office', providerGuard, async (req, res) => {
+  try {
+    const { preferredPostOffice, postOfficeAddress, trackingNumber, dispatchNotes, status } = req.body;
+    const order = await Order.findOne({ _id: req.params.id, provider: req.user._id });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (order.deliveryPreference !== 'post_office') return res.status(400).json({ message: 'This order uses delivery-driver fulfilment' });
+    if (preferredPostOffice !== undefined) order.postOfficeDetails.preferredPostOffice = String(preferredPostOffice).trim();
+    if (postOfficeAddress !== undefined) order.postOfficeDetails.postOfficeAddress = String(postOfficeAddress).trim();
+    if (trackingNumber !== undefined) order.postOfficeDetails.trackingNumber = String(trackingNumber).trim();
+    if (dispatchNotes !== undefined) order.postOfficeDetails.dispatchNotes = String(dispatchNotes).trim();
+    if (status === 'dispatched') {
+      if (!order.postOfficeDetails.preferredPostOffice || !order.postOfficeDetails.trackingNumber) return res.status(400).json({ message: 'Enter the post office and tracking/receipt number before marking dispatched' });
+      order.status = 'out_for_delivery';
+      order.statusHistory.push({ status: 'out_for_delivery', changedBy: req.user._id, note: 'Dispatched through postal service' });
+    }
+    await order.save();
+    await notifyUser(order.customer, { title: 'Postal delivery update', message: status === 'dispatched' ? 'Your order has been marked as dispatched through the postal service.' : 'Your provider updated the postal delivery details.', type: 'order', link: '/orders', metadata: { orderId: String(order._id), deliveryPreference: 'post_office' } });
+    res.json(order);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
