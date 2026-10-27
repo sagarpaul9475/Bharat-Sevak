@@ -209,7 +209,8 @@ export default function ProviderOrders() {
                       {o.shippingAddress.addressLine1}{o.shippingAddress.addressLine2 ? `, ${o.shippingAddress.addressLine2}` : ''}{o.shippingAddress.landmark ? `, Landmark: ${o.shippingAddress.landmark}` : ''}<br/>
                       {[o.shippingAddress.city, o.shippingAddress.district, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', ')}<br/>
                       {o.shippingAddress.locationInstructions && <><strong>Instructions:</strong> {o.shippingAddress.locationInstructions}<br/></>}
-                      {o.shippingAddress.latitude != null && o.shippingAddress.longitude != null && <a href={`https://www.google.com/maps?q=${o.shippingAddress.latitude},${o.shippingAddress.longitude}`} target="_blank" rel="noreferrer">📍 Open customer pin in Maps</a>}
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([o.shippingAddress.addressLine1, o.shippingAddress.addressLine2, o.shippingAddress.landmark, o.shippingAddress.city, o.shippingAddress.district, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', '))}`} target="_blank" rel="noreferrer">🗺️ Open delivery address in Google Maps</a>
+                      {o.shippingAddress.latitude != null && o.shippingAddress.longitude != null && <> · <a href={`https://www.google.com/maps?q=${o.shippingAddress.latitude},${o.shippingAddress.longitude}`} target="_blank" rel="noreferrer">📍 Exact GPS pin</a></>}
                     </div>}
                     <div className="text-sm mt-2"><strong>Delivery preference:</strong> {o.deliveryPreference === 'post_office' ? '📮 Post office / postal service' : '🛵 Delivery driver'}</div>
                     {o.customer?.email && <div className="text-sm mt-1">✉️ <a href={`mailto:${o.customer.email}`} style={{ color: '#F59E0B' }}>{o.customer.email}</a></div>}
