@@ -286,10 +286,16 @@ router.put('/orders/:id/location', verifyToken, async (req, res) => {
 
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
+    const isAssignedWorker = String(order.assignedTo || '') === String(req.user._id);
+    const isProvider = String(order.provider || '') === String(req.user._id);
+    const isCustomer = String(order.customer || '') === String(req.user._id);
+    if (!isAssignedWorker && !isProvider && !isCustomer && req.user.role !== 'admin') return res.status(403).json({ message: 'Only this order’s customer, provider, assigned delivery partner or admin can share its location' });
+    const latitude = Number(lat), longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return res.status(400).json({ message: 'Invalid latitude or longitude' });
 
     const newLocation = {
-      lat: Number(lat),
-      lng: Number(lng),
+      lat: latitude,
+      lng: longitude,
       heading: Number(heading) || 0,
       speed: Number(speed) || 0,
       isLive: Boolean(isLive),
@@ -297,6 +303,7 @@ router.put('/orders/:id/location', verifyToken, async (req, res) => {
     };
 
     order.liveLocation = newLocation;
+    if (isAssignedWorker) { order.deliveryPartnerContact = { name: req.user.name || order.assignedName, phone: req.user.phone || order.assignedPhone, email: req.user.email || '' }; }
     // Keep last 40 points in history
     order.locationHistory.push({ lat: Number(lat), lng: Number(lng), timestamp: new Date() });
     if (order.locationHistory.length > 40) {
