@@ -61,6 +61,7 @@ export const providerAPI = {
   // Orders
   getOrders: (params) => API.get('/provider/orders', { params }),
   updateOrderStatus: (id, data) => API.put(`/provider/orders/${id}/status`, data),
+  updatePostOffice: (id, data) => API.put(`/provider/orders/${id}/post-office`, data),
   getOrderPaymentInfo: (id) => API.get(`/provider/orders/${id}/payment-info`),
   confirmPayment: (id, data) => API.put(`/provider/orders/${id}/confirm-payment`, data),
   // Co-providers
