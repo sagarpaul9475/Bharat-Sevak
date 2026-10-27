@@ -36,6 +36,16 @@ const orderSchema = new mongoose.Schema({
   razorpayTransferId: { type: String, default: '' },
   providerPayoutStatus: { type: String, enum: ['not_applicable', 'pending_onboarding', 'pending_configuration', 'pending', 'transferred', 'failed'], default: 'not_applicable' },
   deliveryAddress: { type: String, default: '' },
+  shippingAddress: {
+    fullName: { type: String, default: '' }, phone: { type: String, default: '' },
+    addressLine1: { type: String, default: '' }, addressLine2: { type: String, default: '' }, landmark: { type: String, default: '' },
+    city: { type: String, default: '' }, district: { type: String, default: '' }, state: { type: String, default: '' },
+    pincode: { type: String, trim: true, match: [/^$|^\d{6}$/, 'Shipping PIN code must be 6 digits'], default: '' },
+    latitude: { type: Number, min: -90, max: 90 }, longitude: { type: Number, min: -180, max: 180 },
+    locationInstructions: { type: String, default: '' },
+  },
+  deliveryPreference: { type: String, enum: ['delivery_driver', 'post_office'], default: 'delivery_driver' },
+  postOfficeDetails: { preferredPostOffice: { type: String, default: '' }, postOfficeAddress: { type: String, default: '' }, trackingNumber: { type: String, default: '' }, dispatchNotes: { type: String, default: '' } },
   deliveryPincode: { type: String, trim: true, match: [/^$|^\d{6}$/, 'Delivery PIN code must be 6 digits'], default: '' },
   orderType: { type: String, enum: ['product', 'service', 'mixed'], default: 'product' },
   // Secure Completion / Delivery OTP
