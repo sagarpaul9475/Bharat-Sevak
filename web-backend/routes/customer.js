@@ -121,13 +121,12 @@ router.post('/orders', verifyToken, async (req, res) => {
     const canProviderServeDestination = deliveryPreference === 'post_office' || (providerUser?.deliveryCoverage?.mode === 'cross_city' ? (providerUser.deliveryCoverage.pincodes || []).includes(destinationPincode) : (!providerPin || providerPin === destinationPincode));
     if (!canProviderServeDestination) return res.status(400).json({ message: 'This provider does not currently deliver to that PIN code' });
 
-    // Initial coordinates (with subtle deterministic delta based on order count so points are distinct on map)
-    const baseLat = 22.5726;
-    const baseLng = 88.3639;
-    const randOffsetLat = ((Math.random() - 0.5) * 0.03);
-    const randOffsetLng = ((Math.random() - 0.5) * 0.03);
-    const dropLat = baseLat + randOffsetLat + 0.015;
-    const dropLng = baseLng + randOffsetLng + 0.018;
+    // Use real coordinates only when supplied/available; never invent a customer's GPS position.
+    const providerLat = Number(providerUser?.currentLocation?.lat ?? providerUser?.location?.lat);
+    const providerLng = Number(providerUser?.currentLocation?.lng ?? providerUser?.location?.lng);
+    const hasProviderCoords = Number.isFinite(providerLat) && Number.isFinite(providerLng) && Math.abs(providerLat) <= 90 && Math.abs(providerLng) <= 180;
+    const dropLat = ship.latitude != null && ship.latitude !== '' ? Number(ship.latitude) : undefined;
+    const dropLng = ship.longitude != null && ship.longitude !== '' ? Number(ship.longitude) : undefined;
 
     const order = await Order.create({
       customer: req.user._id,
@@ -143,25 +142,16 @@ router.post('/orders', verifyToken, async (req, res) => {
       notes,
       orderType,
       deliveryOtp: String(Math.floor(1000 + Math.random() * 9000)),
+      providerContact: { name: providerUser?.businessName || providerUser?.name || '', phone: providerUser?.phone || '', email: providerUser?.email || '' },
       pickupLocation: {
         address: providerUser?.businessName || providerUser?.address || 'Provider Facility',
-        lat: baseLat,
-        lng: baseLng,
+        ...(hasProviderCoords ? { lat: providerLat, lng: providerLng } : {}),
       },
       dropoffLocation: {
         address: [ship.addressLine1, ship.addressLine2, ship.city, ship.state, `PIN: ${destinationPincode}`].filter(Boolean).join(', '),
-        ...(ship.latitude != null && ship.latitude !== '' && ship.longitude != null && ship.longitude !== '' ? { lat: Number(ship.latitude), lng: Number(ship.longitude) } : {}),
-        lat: dropLat,
-        lng: dropLng,
+        ...(dropLat != null && dropLng != null ? { lat: dropLat, lng: dropLng } : {}),
       },
-      liveLocation: {
-        lat: baseLat,
-        lng: baseLng,
-        heading: 35,
-        speed: 0,
-        isLive: false,
-        updatedAt: new Date(),
-      },
+      liveLocation: { isLive: false },
       statusHistory: [{ status: 'pending', changedBy: req.user._id }]
     });
     await Promise.all([
