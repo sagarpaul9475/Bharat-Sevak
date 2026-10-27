@@ -65,7 +65,7 @@ router.post('/orders', verifyToken, async (req, res) => {
     if (!allowedDeliveryPreferences.includes(deliveryPreference)) return res.status(400).json({ message: 'Choose a valid delivery preference' });
     const ship = { ...shippingAddress, pincode: destinationPincode };
     if (![ship.fullName, ship.phone, ship.addressLine1, ship.city, ship.state].every(v => String(v || '').trim())) return res.status(400).json({ message: 'Complete recipient name, phone, street address, city and state before ordering' });
-    if (!/^\\+?[0-9\\s()-]{7,20}$/.test(String(ship.phone).trim())) return res.status(400).json({ message: 'Enter a valid recipient phone number' });
+    if (!/^\+?[0-9\s()-]{7,20}$/.test(String(ship.phone).trim())) return res.status(400).json({ message: 'Enter a valid recipient phone number' });
     if (ship.latitude != null && ship.latitude !== '' && (!Number.isFinite(Number(ship.latitude)) || Number(ship.latitude) < -90 || Number(ship.latitude) > 90)) return res.status(400).json({ message: 'Invalid delivery latitude' });
     if (ship.longitude != null && ship.longitude !== '' && (!Number.isFinite(Number(ship.longitude)) || Number(ship.longitude) < -180 || Number(ship.longitude) > 180)) return res.status(400).json({ message: 'Invalid delivery longitude' });
     if (!items || items.length === 0) return res.status(400).json({ message: 'No items in order' });
