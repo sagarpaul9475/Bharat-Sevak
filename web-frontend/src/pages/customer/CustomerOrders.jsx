@@ -5,6 +5,8 @@ import LiveTrackingModal from '../../components/LiveTrackingModal';
 import UpiPaymentModal from '../../components/UpiPaymentModal';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
+import PrintableReceipt from '../../components/PrintableReceipt';
+import '../../receipt.css';
 
 export default function CustomerOrders() {
   const { user } = useAuth();
@@ -158,6 +160,8 @@ export default function CustomerOrders() {
                     </div>
                   </div>
                 </div>
+
+                <PrintableReceipt order={o} viewer="customer" />
 
                 {/* PROMINENT SECRET OTP CARD FOR CUSTOMER */}
                 {!isCancelled && (

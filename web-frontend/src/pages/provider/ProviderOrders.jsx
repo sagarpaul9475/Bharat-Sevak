@@ -5,6 +5,8 @@ import AssignWorkerModal from '../../components/AssignWorkerModal';
 import LiveTrackingModal from '../../components/LiveTrackingModal';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
+import PrintableReceipt from '../../components/PrintableReceipt';
+import '../../receipt.css';
 
 function PostOfficeDispatchForm({ order, onSave }) {
   const [form, setForm] = useState({ preferredPostOffice: order.postOfficeDetails?.preferredPostOffice || '', postOfficeAddress: order.postOfficeDetails?.postOfficeAddress || '', trackingNumber: order.postOfficeDetails?.trackingNumber || '', dispatchNotes: order.postOfficeDetails?.dispatchNotes || '' });
@@ -189,6 +191,8 @@ export default function ProviderOrders() {
                     </div>
                   </div>
                 </div>
+
+                <PrintableReceipt order={o} viewer="provider" />
 
                 {/* Grid Info */}
                 <div className="grid-2 mb-4" style={{ gap: 20, background: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 8 }}>
