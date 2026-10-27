@@ -63,7 +63,7 @@ export default function LandingPage() {
         </div>
 
         <h1 style={{ fontSize: 'clamp(28px, 6vw, 68px)', fontWeight: 900, lineHeight: 1.15, maxWidth: 840, marginBottom: 16 }}>
-          Your Local{' '}
+          Bharat Sevak: Your Local{' '}
           <span style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C33)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Marketplace
           </span>{' '}
@@ -71,8 +71,7 @@ export default function LandingPage() {
         </h1>
 
         <p style={{ fontSize: 'clamp(14px, 2.5vw, 18px)', color: 'var(--text-secondary)', maxWidth: 620, lineHeight: 1.6, marginBottom: 32 }}>
-          Connect with local providers for food, vegetables, home services, tuition, and more.
-          Bharat Sevak automates the real-life marketplace with live location tracking and secure customer OTP verification.
+          Bharat Sevak is a local marketplace connecting customers with nearby providers for groceries, vegetables, food, tuition, home services and repairs. Discover local products and services, place orders, choose delivery options, and track eligible deliveries.
         </p>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: 480 }}>
@@ -170,8 +169,27 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
+      <section aria-labelledby="bharat-sevak-about" style={{ padding: '36px 16px', background: 'rgba(0,0,0,0.16)' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <h2 id="bharat-sevak-about" style={{ fontSize: 24, marginBottom: 12 }}>About Bharat Sevak</h2>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 12 }}>
+            Bharat Sevak is an India-focused local marketplace designed to help customers discover nearby products and everyday services while helping local providers reach more customers. Customers can browse available listings, compare details, place orders and select supported delivery options.
+          </p>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 12 }}>
+            The platform supports a range of local needs, including groceries and vegetables, food, tuition, home services, repairs and delivery. Providers can create business profiles and list eligible products or services. Delivery availability may depend on the provider's service area and destination PIN code.
+          </p>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+            Bharat Sevak's aim is to make it easier for people to find local services and support community businesses through a convenient digital platform.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 18 }}>
+            <Link to="/browse" className="btn btn-secondary btn-sm">Explore local listings</Link>
+            <Link to="/register?role=provider" className="btn btn-secondary btn-sm">Join as a provider</Link>
+            <Link to="/register?role=customer" className="btn btn-secondary btn-sm">Create a customer account</Link>
+          </div>
+        </div>
+      </section>
       <footer style={{ padding: '20px 16px', borderTop: '1px solid var(--navy-border)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-        © 2024 Bharat Sevak — Empowering Daily Income Workers across India 🇮🇳
+        © 2026 Bharat Sevak — Local products, services and delivery across India 🇮🇳
       </footer>
     </div>
   );
