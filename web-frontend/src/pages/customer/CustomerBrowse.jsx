@@ -19,6 +19,8 @@ export default function CustomerBrowse() {
   const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [deliveryPincode, setDeliveryPincode] = useState(user?.region?.pincode || '');
+  const [shipping, setShipping] = useState({ fullName: user?.name || '', phone: user?.phone || '', addressLine1: user?.address || '', addressLine2: '', landmark: '', city: user?.region?.area || '', district: user?.region?.district || '', state: user?.region?.state || '', locationInstructions: '', latitude: '', longitude: '' });
+  const [deliveryPreference, setDeliveryPreference] = useState('delivery_driver');
 
   const load = () => {
     setLoading(true);
@@ -148,6 +150,8 @@ export default function CustomerBrowse() {
         paymentMethod,
         deliveryAddress: user.address || 'My Default Address',
         deliveryPincode: deliveryPincode.trim(),
+        shippingAddress: { ...shipping, pincode: deliveryPincode.trim(), latitude: shipping.latitude === '' ? undefined : Number(shipping.latitude), longitude: shipping.longitude === '' ? undefined : Number(shipping.longitude) },
+        deliveryPreference,
       });
       setCart([]);
       setShowCart(false);
@@ -314,7 +318,25 @@ export default function CustomerBrowse() {
             <div className="modal-head"><h2>🛒 Your Cart</h2><button className="btn-icon btn-secondary" onClick={() => setShowCart(false)}>✕</button></div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              <div className="form-group" style={{ padding: '12px 12px 0' }}><label className="form-label">Delivery PIN code *</label><input className="form-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6-digit destination PIN" value={deliveryPincode} onChange={e => setDeliveryPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} required /></div>
+              <div className="p-3">
+<h3 className="font-bold mb-2">Shipping address</h3>
+<label className="form-label">Recipient full name *<input className="form-input mt-1" value={shipping.fullName} onChange={e => setShipping({ ...shipping, fullName: e.target.value })} required /></label>
+<label className="form-label">Contact phone *<input className="form-input mt-1" inputMode="tel" value={shipping.phone} onChange={e => setShipping({ ...shipping, phone: e.target.value })} required /></label>
+<label className="form-label">House / street / address line 1 *<input className="form-input mt-1" value={shipping.addressLine1} onChange={e => setShipping({ ...shipping, addressLine1: e.target.value })} required /></label>
+<label className="form-label">Address line 2<input className="form-input mt-1" value={shipping.addressLine2} onChange={e => setShipping({ ...shipping, addressLine2: e.target.value })} /></label>
+<label className="form-label">Landmark<input className="form-input mt-1" value={shipping.landmark} onChange={e => setShipping({ ...shipping, landmark: e.target.value })} /></label>
+<div className="grid grid-cols-2 gap-2">
+<label className="form-label">City / town *<input className="form-input mt-1" value={shipping.city} onChange={e => setShipping({ ...shipping, city: e.target.value })} required /></label>
+<label className="form-label">District<input className="form-input mt-1" value={shipping.district} onChange={e => setShipping({ ...shipping, district: e.target.value })} /></label>
+<label className="form-label">State *<input className="form-input mt-1" value={shipping.state} onChange={e => setShipping({ ...shipping, state: e.target.value })} required /></label>
+<label className="form-label">PIN code *<input className="form-input mt-1" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={deliveryPincode} onChange={e => setDeliveryPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} required /></label></div>
+<label className="form-label">Delivery instructions<input className="form-input mt-1" placeholder="Gate, floor, best time to call" value={shipping.locationInstructions} onChange={e => setShipping({ ...shipping, locationInstructions: e.target.value })} /></label>
+<button type="button" className="btn btn-secondary mb-3" onClick={() => { if (!navigator.geolocation) { toast.error('Location is not supported'); return; } navigator.geolocation.getCurrentPosition(pos => setShipping(s => ({ ...s, latitude: String(pos.coords.latitude), longitude: String(pos.coords.longitude) })), () => toast.error('Could not access location. Check browser permission.'), { enableHighAccuracy: true, timeout: 10000 }); }}>📍 Use current location (optional)</button>
+{shipping.latitude && shipping.longitude && <p className="text-xs text-muted">Location saved: {Number(shipping.latitude).toFixed(5)}, {Number(shipping.longitude).toFixed(5)}</p>}
+<h3 className="font-bold mt-2 mb-2">Preferred delivery method</h3>
+<label className="flex items-start gap-2 mb-2"><input type="radio" name="deliveryPreference" value="delivery_driver" checked={deliveryPreference === 'delivery_driver'} onChange={() => setDeliveryPreference('delivery_driver')} /><span><strong>Delivery driver</strong><br/><small>For destinations covered by a local/cross-city partner.</small></span></label>
+<label className="flex items-start gap-2"><input type="radio" name="deliveryPreference" value="post_office" checked={deliveryPreference === 'post_office'} onChange={() => setDeliveryPreference('post_office')} /><span><strong>Post office / postal service</strong><br/><small>Recommended for cross-city orders. The provider will coordinate postage and record dispatch/tracking details.</small></span></label>
+</div>
               {cart.length === 0 ? <div className="empty-state"><div className="empty-icon">🛒</div><div className="empty-title">Cart is empty</div></div> : (
                 <>
                   <div className="text-sm font-bold text-saffron mb-3">Ordering from: {cart[0].providerName}</div>
