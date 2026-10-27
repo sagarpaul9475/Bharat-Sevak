@@ -177,7 +177,7 @@ export default function LiveTrackingModal({ orderId, onClose, onOrderUpdated }) 
     markersRef.current.driver.setLatLng([newLoc.lat, newLoc.lng]);
 
     if (order && markersRef.current.routeLine) {
-      const points = [order.pickupLocation, newLoc, order.dropoffLocation].filter(point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng)).map(point => [point.lat, point.lng]);
+      const points = [order.pickupLocation, newLoc, order.dropoffLocation].filter(point => point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng))).map(point => [point.lat, point.lng]);
       markersRef.current.routeLine.setLatLngs(points);
     }
   };
