@@ -213,6 +213,7 @@ export default function ProviderOrders() {
                     </div>}
                     <div className="text-sm mt-2"><strong>Delivery preference:</strong> {o.deliveryPreference === 'post_office' ? '📮 Post office / postal service' : '🛵 Delivery driver'}</div>
                     {o.customer?.email && <div className="text-sm mt-1">✉️ <a href={`mailto:${o.customer.email}`} style={{ color: '#F59E0B' }}>{o.customer.email}</a></div>}
+                    {o.assignedTo && <div className="text-sm mt-1"><strong>Assigned delivery partner:</strong> {o.assignedTo.name} · {o.assignedTo.phone || 'No phone'} {o.assignedTo.email && <>· <a href={`mailto:${o.assignedTo.email}`}>{o.assignedTo.email}</a></>}</div>}
                     {o.deliveryPreference === 'post_office' && (
                       <PostOfficeDispatchForm order={o} onSave={async payload => { await providerAPI.updatePostOffice(o._id, payload); toast.success('Postal delivery details saved'); load(); }} />
                     )}
