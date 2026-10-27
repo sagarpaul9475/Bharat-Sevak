@@ -172,9 +172,17 @@ export default function DeliveryDashboard() {
                         📞 {task.customer?.phone}
                       </a>
                     </div>
-                    <div style={{ fontSize: 12, marginTop: 4 }}>
-                      📍 {task.deliveryAddress || 'Customer Address'}
-                    </div>
+                    <div style={{ fontSize: 12, marginTop: 4 }}>📍 {task.deliveryAddress || 'Customer Address'}</div>
+                    {task.shippingAddress && <div style={{ fontSize: 12, marginTop: 6 }}>
+                      <strong>Recipient:</strong> {task.shippingAddress.fullName}<br/>
+                      <strong>Contact:</strong> <a href={`tel:${task.shippingAddress.phone}`} style={{ color: 'inherit' }}>{task.shippingAddress.phone}</a><br/>
+                      {task.shippingAddress.addressLine1}{task.shippingAddress.addressLine2 ? `, ${task.shippingAddress.addressLine2}` : ''}{task.shippingAddress.landmark ? `, ${task.shippingAddress.landmark}` : ''}<br/>
+                      {[task.shippingAddress.city, task.shippingAddress.district, task.shippingAddress.state, task.shippingAddress.pincode].filter(Boolean).join(', ')}<br/>
+                      {task.shippingAddress.locationInstructions && <>Instructions: {task.shippingAddress.locationInstructions}<br/></>}
+                      {task.shippingAddress.latitude != null && task.shippingAddress.longitude != null && <a href={`https://www.google.com/maps?q=${task.shippingAddress.latitude},${task.shippingAddress.longitude}`} target="_blank" rel="noreferrer">Open destination in Maps</a>}
+                    </div>}
+                    <div style={{ fontSize: 12, marginTop: 6 }}><strong>Preferred fulfilment:</strong> {task.deliveryPreference === 'post_office' ? '📮 Post office — provider coordinates dispatch' : '🛵 Delivery driver'}</div>
+                    {task.customer?.email && <div style={{ fontSize: 12 }}><a href={`mailto:${task.customer.email}`} style={{ color: 'inherit' }}>{task.customer.email}</a></div>}
                     {task.notes && (
                       <div style={{ fontSize: 12, marginTop: 6, padding: '4px 8px', background: '#334155', borderRadius: 6 }}>
                         <strong>Note:</strong> {task.notes}
