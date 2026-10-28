@@ -2,24 +2,8 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const { verifyToken } = require('../middleware/auth');
-
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '..', 'uploads', 'products', String(req.user._id));
-    ensureDir(dir);
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, String(Date.now()) + '-' + String(Math.round(Math.random() * 1e6)) + ext);
-  },
-});
+const cloudinary = require('../config/cloudinary');
 
 const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const videoTypes = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
@@ -35,30 +19,34 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: { fileSize: 20 * 1024 * 1024, files: 6 },
 });
 
 const mediaUpload = (req, res, next) => {
-  upload.fields([
-    { name: 'images', maxCount: 5 },
-    { name: 'video', maxCount: 1 },
-  ])(req, res, (err) => {
+  upload.fields([{ name: 'images', maxCount: 5 }, { name: 'video', maxCount: 1 }])(req, res, (err) => {
     if (err) return res.status(400).json({ message: err.message || 'Invalid product media upload' });
     next();
   });
 };
 
+const uploadBuffer = (buffer, options) => new Promise((resolve, reject) => {
+  const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+    if (error) return reject(error);
+    resolve(result);
+  });
+  stream.end(buffer);
+});
+
 router.post('/product-media', verifyToken, mediaUpload, async (req, res) => {
-  const files = [...(req.files?.images || []), ...(req.files?.video || [])];
+  const images = req.files?.images || [];
+  const videos = req.files?.video || [];
+  const uploadedAssets = [];
   try {
-    const images = req.files?.images || [];
-    const videos = req.files?.video || [];
-
-    if (images.length > 5) throw new Error('Maximum 5 product images are allowed');
-    if (videos.length > 1) throw new Error('Only one product video is allowed');
-
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(503).json({ message: 'Product media storage is not configured. Please contact support.' });
+    }
     for (const file of images) {
       if (file.size > 5 * 1024 * 1024) throw new Error('Each product image must be 5MB or smaller');
     }
@@ -66,18 +54,36 @@ router.post('/product-media', verifyToken, mediaUpload, async (req, res) => {
       if (file.size > 20 * 1024 * 1024) throw new Error('Product video must be 20MB or smaller');
     }
 
-    const baseUrl = req.protocol + '://' + req.get('host');
-    const imageUrls = images.map(file => baseUrl + '/uploads/products/' + req.user._id + '/' + encodeURIComponent(file.filename));
-    const videoUrl = videos[0]
-      ? baseUrl + '/uploads/products/' + req.user._id + '/' + encodeURIComponent(videos[0].filename)
-      : '';
+    const providerId = String(req.user._id);
+    const imageUrls = await Promise.all(images.map(async file => {
+      const result = await uploadBuffer(file.buffer, {
+        folder: `bharat-sevak/products/${providerId}/images`,
+        resource_type: 'image',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      });
+      uploadedAssets.push({ public_id: result.public_id, resource_type: result.resource_type });
+      return result.secure_url;
+    }));
 
-    res.status(201).json({ images: imageUrls, videoUrl });
-  } catch (err) {
-    for (const file of files) {
-      if (file?.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    let videoUrl = '';
+    if (videos[0]) {
+      const result = await uploadBuffer(videos[0].buffer, {
+        folder: `bharat-sevak/products/${providerId}/videos`,
+        resource_type: 'video',
+        allowed_formats: ['mp4', 'webm', 'mov'],
+      });
+      uploadedAssets.push({ public_id: result.public_id, resource_type: result.resource_type });
+      videoUrl = result.secure_url;
     }
-    res.status(400).json({ message: err.message || 'Could not upload product media' });
+    return res.status(201).json({ images: imageUrls, videoUrl });
+  } catch (err) {
+    await Promise.all(uploadedAssets.map(asset =>
+      cloudinary.uploader.destroy(asset.public_id, { resource_type: asset.resource_type }).catch(() => null)
+    ));
+    const invalid = /5MB|20MB|Maximum|Only one/.test(err.message || '');
+    return res.status(invalid ? 400 : 502).json({
+      message: invalid ? err.message : 'Could not upload product media. Please try again.',
+    });
   }
 });
 
