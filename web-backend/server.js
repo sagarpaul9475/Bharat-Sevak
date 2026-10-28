@@ -32,9 +32,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/delivery', require('./routes/delivery'));
 
-// Product media is intentionally public because approved marketplace listings need browser-accessible images/video.
-// KYC and business documents remain private and are never served statically.
-app.use('/uploads/products', express.static(path.join(__dirname, 'uploads', 'products')));
+// Product media is stored in Cloudinary. KYC and business documents remain private.
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
