@@ -4,6 +4,7 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -34,7 +35,13 @@ app.use('/api/delivery', require('./routes/delivery'));
 
 // Product media is intentionally public because approved marketplace listings need browser-accessible images/video.
 // KYC and business documents remain private and are never served statically.
-app.use('/uploads/products', express.static(path.join(__dirname, 'uploads', 'products')));
+const productUploadsDirectory = path.join(__dirname, 'uploads', 'products');
+fs.mkdirSync(productUploadsDirectory, { recursive: true });
+app.use('/uploads/products', express.static(productUploadsDirectory, {
+  // A browser/CDN must not keep showing a stale response if a provider replaces media.
+  maxAge: '1d',
+  immutable: false,
+}));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
