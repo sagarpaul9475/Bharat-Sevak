@@ -10,25 +10,25 @@ const { notifyUser, notifyRole } = require('../utils/notifications');
 const providerGuard = [verifyToken, requireRole('provider', 'admin')];
 
 const validateProductMedia = (req, images, videoUrl) => {
-  const ownerPrefix = '/uploads/products/' + String(req.user._id) + '/';
-  const expectedOrigin = req.protocol + '://' + req.get('host');
-  const isOwnedMediaUrl = (value) => {
-    if (typeof value !== 'string' || !value) return false;
-    try {
-      const parsed = new URL(value, expectedOrigin);
-      return parsed.origin === expectedOrigin && parsed.pathname.startsWith(ownerPrefix);
-    } catch {
-      return false;
-    }
-  };
-
   const safeImages = Array.isArray(images) ? images : [];
   if (safeImages.length > 5) throw new Error('Maximum 5 product images are allowed');
-  if (safeImages.some(url => !isOwnedMediaUrl(url))) {
-    throw new Error('Product images must come from the authenticated product media upload');
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const isCloudinaryMediaUrl = (value, resourceType) => {
+    if (typeof value !== 'string' || !value || !cloudName) return false;
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'res.cloudinary.com') return false;
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      if (parts.length < 4 || parts[0] !== cloudName || parts[1] !== resourceType) return false;
+      const publicPath = parts.slice(3).join('/');
+      return publicPath.startsWith('bharat-sevak/products/' + String(req.user._id) + '/');
+    } catch { return false; }
+  };
+  if (safeImages.some(url => !isCloudinaryMediaUrl(url, 'image'))) {
+    throw new Error('Product images must come from your authenticated Cloudinary product-media upload');
   }
-  if (videoUrl && !isOwnedMediaUrl(videoUrl)) {
-    throw new Error('Product video must come from the authenticated product media upload');
+  if (videoUrl && !isCloudinaryMediaUrl(videoUrl, 'video')) {
+    throw new Error('Product video must come from your authenticated Cloudinary product-media upload');
   }
   return { images: safeImages, videoUrl: videoUrl || '' };
 };
