@@ -9,6 +9,8 @@ const ensureDir = (dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
+// Uploaded product/service media is stored under the backend's local uploads directory.
+// This works without paid storage, but the deployment filesystem must be persistent.
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '..', 'uploads', 'products', String(req.user._id));
@@ -66,10 +68,10 @@ router.post('/product-media', verifyToken, mediaUpload, async (req, res) => {
       if (file.size > 20 * 1024 * 1024) throw new Error('Product video must be 20MB or smaller');
     }
 
-    const baseUrl = req.protocol + '://' + req.get('host');
-    const imageUrls = images.map(file => baseUrl + '/uploads/products/' + req.user._id + '/' + encodeURIComponent(file.filename));
+    const baseUrl = process.env.PUBLIC_API_URL || (req.protocol + '://' + req.get('host'));
+    const imageUrls = images.map(file => baseUrl.replace(/\/$/, '') + '/uploads/products/' + req.user._id + '/' + encodeURIComponent(file.filename));
     const videoUrl = videos[0]
-      ? baseUrl + '/uploads/products/' + req.user._id + '/' + encodeURIComponent(videos[0].filename)
+      ? baseUrl.replace(/\/$/, '') + '/uploads/products/' + req.user._id + '/' + encodeURIComponent(videos[0].filename)
       : '';
 
     res.status(201).json({ images: imageUrls, videoUrl });
