@@ -14,7 +14,7 @@ const productSchema = new mongoose.Schema({
   ratingCount: { type: Number, min: 0, default: 0 },
   stock: { type: Number, default: 0 },
   unit: { type: String, default: 'piece' },
-  status: { type: String, enum: ['pending', 'approved', 'rejected', 'active', 'inactive'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'active', 'inactive', 'suspended'], default: 'pending' },
   tags: [{ type: String }],
   region: {
     state: { type: String, default: '' },

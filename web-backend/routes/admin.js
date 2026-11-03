@@ -53,12 +53,48 @@ router.get('/users', adminGuard, async (req, res) => {
 router.put('/users/:id', adminGuard, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true }).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // If admin bans/rejects/suspends a provider -> hide ALL their listings from the marketplace
+    const bannedStatuses = ['rejected', 'banned', 'suspended'];
+    if (user.role === 'provider' && bannedStatuses.includes(user.status)) {
+      await Product.updateMany(
+        { provider: user._id, status: { $in: ['approved', 'pending'] } },
+        { $set: { status: 'suspended' } }
+      );
+      await Service.updateMany(
+        { provider: user._id, status: { $in: ['approved', 'pending'] } },
+        { $set: { status: 'suspended' } }
+      );
+    }
+
+    // If admin re-approves a provider -> restore their suspended listings back to approved
+    if (user.role === 'provider' && user.status === 'approved') {
+      await Product.updateMany(
+        { provider: user._id, status: 'suspended' },
+        { $set: { status: 'approved' } }
+      );
+      await Service.updateMany(
+        { provider: user._id, status: 'suspended' },
+        { $set: { status: 'approved' } }
+      );
+    }
+
     res.json(user);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 router.delete('/users/:id', adminGuard, async (req, res) => {
   try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // If deleting a provider -> unpublish ALL their listings so they vanish from the marketplace
+    if (user.role === 'provider') {
+      await Product.updateMany({ provider: user._id }, { $set: { status: 'suspended' } });
+      await Service.updateMany({ provider: user._id }, { $set: { status: 'suspended' } });
+    }
+
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'User deleted' });
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -96,12 +132,24 @@ router.put('/approvals/providers/:id/approve', adminGuard, async (req, res) => {
 router.put('/approvals/providers/:id/reject', adminGuard, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true }).select('-password');
-    if (user) await notifyUser(user._id, {
-      title: 'Provider verification update',
-      message: 'Your provider application was rejected. Please review the information submitted or contact support.',
-      type: 'verification',
-      link: '/provider/profile',
-    });
+
+    // Also suspend their listings when provider is rejected
+    if (user) {
+      await Product.updateMany(
+        { provider: user._id, status: { $in: ['approved', 'pending'] } },
+        { $set: { status: 'suspended' } }
+      );
+      await Service.updateMany(
+        { provider: user._id, status: { $in: ['approved', 'pending'] } },
+        { $set: { status: 'suspended' } }
+      );
+      await notifyUser(user._id, {
+        title: 'Provider verification update',
+        message: 'Your provider application was rejected. Please review the information submitted or contact support.',
+        type: 'verification',
+        link: '/provider/profile',
+      });
+    }
     res.json({ message: 'Provider rejected', user });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -159,6 +207,7 @@ router.put('/approvals/products/:id/approve', adminGuard, async (req, res) => {
 router.put('/approvals/products/:id/reject', adminGuard, async (req, res) => {
   try {
     const { reason } = req.body;
+    // Set status to 'rejected' so it does NOT appear in any public listing (status: 'approved' filter)
     const p = await Product.findByIdAndUpdate(req.params.id, { status: 'rejected', rejectionReason: reason || '' }, { new: true });
     if (p) await notifyUser(p.provider, {
       title: 'Product needs changes',
@@ -196,6 +245,7 @@ router.put('/approvals/services/:id/approve', adminGuard, async (req, res) => {
 router.put('/approvals/services/:id/reject', adminGuard, async (req, res) => {
   try {
     const { reason } = req.body;
+    // Set status to 'rejected' so it does NOT appear in any public listing (status: 'approved' filter)
     const s = await Service.findByIdAndUpdate(req.params.id, { status: 'rejected', rejectionReason: reason || '' }, { new: true });
     if (s) await notifyUser(s.provider, {
       title: 'Service needs changes',
@@ -242,6 +292,8 @@ router.get('/reports/providers', adminGuard, async (req, res) => {
       { $group: { _id: '$provider', totalOrders: { $sum: 1 }, totalRevenue: { $sum: '$totalAmount' } } },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'provider' } },
       { $unwind: '$provider' },
+      // Only show active/approved providers — exclude banned, rejected, suspended, or deleted ones
+      { $match: { 'provider.status': 'approved', 'provider.role': 'provider' } },
       { $project: { 'provider.name': 1, 'provider.businessName': 1, totalOrders: 1, totalRevenue: 1 } },
       { $sort: { totalRevenue: -1 } },
       { $limit: 20 }

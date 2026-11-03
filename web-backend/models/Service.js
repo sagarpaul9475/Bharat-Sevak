@@ -11,7 +11,7 @@ const serviceSchema = new mongoose.Schema({
   location: { type: String, default: '' },
   radius: { type: Number, default: 5 },
   availability: { type: String, default: 'Mon-Sat, 9am-6pm' },
-  status: { type: String, enum: ['pending', 'approved', 'rejected', 'active', 'inactive'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'active', 'inactive', 'suspended'], default: 'pending' },
   rejectionReason: { type: String, default: '' },
   region: {
     state: { type: String, default: '' },
