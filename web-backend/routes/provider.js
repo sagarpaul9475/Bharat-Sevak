@@ -56,16 +56,35 @@ router.get('/dashboard', providerGuard, async (req, res) => {
         amount: { $sum: '$providerTransferAmount' }
       } }
     ]);
-    const routeProfile = await User.findById(providerId)
-      .select('razorpayRouteAccountId razorpayRouteStatus');
+    const providerProfile = await User.findById(providerId)
+      .select('name businessName phone email address region isVerified createdAt providerType razorpayRouteAccountId razorpayRouteStatus');
     // Unique customers
     const uniqueCustomers = await Order.distinct('customer', { provider: providerId });
-    const recentOrders = await Order.find({ provider: providerId }).sort('-createdAt').limit(5)
-      .populate('customer', 'name phone');
+    const recentOrders = await Order.find({ provider: providerId })
+      .sort('-createdAt')
+      .limit(25)
+      .populate('customer', 'name phone email');
     // Co-providers (other providers in the system)
     const coProviders = await User.find({ role: 'provider', _id: { $ne: providerId }, status: 'approved' })
       .select('name businessName providerType region').limit(10);
-    res.json({ products, services, totalOrders, pendingOrders, completedOrders, revenue: revenue[0]?.total || 0, uniqueCustomers: uniqueCustomers.length, recentOrders, coProviders, routePayouts: { status: routeProfile?.razorpayRouteStatus || 'not_started', linkedAccountConfigured: Boolean(routeProfile?.razorpayRouteAccountId), summary: payoutSummary } });
+
+    res.json({
+      products,
+      services,
+      totalOrders,
+      pendingOrders,
+      completedOrders,
+      revenue: revenue[0]?.total || 0,
+      uniqueCustomers: uniqueCustomers.length,
+      recentOrders,
+      coProviders,
+      providerProfile,
+      routePayouts: {
+        status: providerProfile?.razorpayRouteStatus || 'not_started',
+        linkedAccountConfigured: Boolean(providerProfile?.razorpayRouteAccountId),
+        summary: payoutSummary
+      }
+    });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -282,7 +301,7 @@ router.put('/bank-details', providerGuard, async (req, res) => {
 router.get('/orders/:id/payment-info', providerGuard, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, provider: req.user._id })
-      .select('orderId totalAmount paymentStatus paymentMethod utrNumber payerPhone paymentNote paymentSubmittedAt paymentConfirmedAt txnId');
+      .select('orderId totalAmount deliveryCharge postOfficeCharge paymentStatus paymentMethod utrNumber payerPhone paymentNote paymentSubmittedAt paymentConfirmedAt txnId');
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) { res.status(500).json({ message: err.message }); }

@@ -5,24 +5,60 @@ const Service = require('../models/Service');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Menu = require('../models/Menu');
+const Setting = require('../models/Setting');
 const { verifyToken } = require('../middleware/auth');
 const { notifyUser, notifyRole } = require('../utils/notifications');
 
 // ── Public: Browse Products ──────────────────────────────────
 router.get('/products', async (req, res) => {
   try {
-    const { category, search, state, district, area, pincode, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
+    const { category, menu, search, state, district, area, pincode, minPrice, maxPrice, provider, providerName, productName, page = 1, limit = 12 } = req.query;
     const filter = { status: 'approved' };
-    if (category) filter.category = category;
+    const selectedCategory = category || menu;
+    if (selectedCategory) filter.category = selectedCategory;
     if (state) filter['region.state'] = state;
     if (district) filter['region.district'] = district;
     if (area) filter['region.area'] = area;
-    if (pincode) { if (!/^\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
-    if (req.query.provider) filter.provider = req.query.provider;
-    if (search) filter.$or = [{ name: { $regex: search, $options: 'i' } }, { tags: { $in: [new RegExp(search, 'i')] } }];
+    if (pincode) {
+      if (!/^\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' });
+      filter['region.pincode'] = String(pincode);
+    }
+
+    // Filter by specific product name
+    if (productName && productName.trim()) {
+      filter.name = { $regex: productName.trim(), $options: 'i' };
+    }
+
+    // Filter by provider name or provider ID
+    if (providerName && providerName.trim()) {
+      const matchingProviders = await User.find({
+        role: 'provider',
+        status: 'approved',
+        $or: [
+          { name: { $regex: providerName.trim(), $options: 'i' } },
+          { businessName: { $regex: providerName.trim(), $options: 'i' } }
+        ]
+      }).select('_id');
+      filter.provider = { $in: matchingProviders.map(p => p._id) };
+    } else if (provider) {
+      filter.provider = provider;
+    } else {
+      // Safety net: exclude products from banned/suspended/rejected providers
+      const activeProv = await User.find({ role: 'provider', status: 'approved' }).select('_id');
+      filter.provider = { $in: activeProv.map(p => p._id) };
+    }
+
+    if (search && search.trim()) {
+      filter.$or = [
+        { name: { $regex: search.trim(), $options: 'i' } },
+        { tags: { $in: [new RegExp(search.trim(), 'i')] } },
+        { categoryName: { $regex: search.trim(), $options: 'i' } }
+      ];
+    }
     if (minPrice || maxPrice) filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice);
     if (maxPrice) filter.price.$lte = Number(maxPrice);
+
     const products = await Product.find(filter).populate('provider', 'name businessName region').sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));
     const total = await Product.countDocuments(filter);
@@ -33,17 +69,69 @@ router.get('/products', async (req, res) => {
 // ── Public: Browse Services ──────────────────────────────────
 router.get('/services', async (req, res) => {
   try {
-    const { serviceType, search, state, pincode, page = 1, limit = 12 } = req.query;
+    const { serviceType, search, state, pincode, providerName, page = 1, limit = 12 } = req.query;
     const filter = { status: 'approved' };
     if (serviceType) filter.serviceType = serviceType;
     if (state) filter['region.state'] = state;
-    if (pincode) { if (!/^\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' }); filter['region.pincode'] = String(pincode); }
-    if (req.query.provider) filter.provider = req.query.provider;
+    if (pincode) {
+      if (!/^\d{6}$/.test(String(pincode))) return res.status(400).json({ message: 'PIN code must be 6 digits' });
+      filter['region.pincode'] = String(pincode);
+    }
+    if (providerName && providerName.trim()) {
+      const matchingProviders = await User.find({
+        role: 'provider',
+        status: 'approved',
+        $or: [
+          { name: { $regex: providerName.trim(), $options: 'i' } },
+          { businessName: { $regex: providerName.trim(), $options: 'i' } }
+        ]
+      }).select('_id');
+      filter.provider = { $in: matchingProviders.map(p => p._id) };
+    } else if (req.query.provider) {
+      filter.provider = req.query.provider;
+    } else {
+      const activeProv = await User.find({ role: 'provider', status: 'approved' }).select('_id');
+      filter.provider = { $in: activeProv.map(p => p._id) };
+    }
     if (search) filter.name = { $regex: search, $options: 'i' };
     const services = await Service.find(filter).populate('provider', 'name businessName region').sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));
     const total = await Service.countDocuments(filter);
     res.json({ services, total, pages: Math.ceil(total / limit) });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── Public: Approved Products Dropdown (Approved by Admin) ───
+router.get('/approved-products-dropdown', async (req, res) => {
+  try {
+    const activeProv = await User.find({ role: 'provider', status: 'approved' }).select('_id');
+    const products = await Product.find({
+      status: 'approved',
+      provider: { $in: activeProv.map(p => p._id) }
+    })
+      .select('name category categoryName price unit provider')
+      .populate('provider', 'name businessName')
+      .sort('name');
+    res.json(products);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── Public: Approved Providers Dropdown ───────────────────────
+router.get('/approved-providers-dropdown', async (req, res) => {
+  try {
+    const providers = await User.find({ role: 'provider', status: 'approved' })
+      .select('name businessName region')
+      .sort('businessName');
+    res.json(providers);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── Public: Get Post Office Delivery Charge ──────────────────
+router.get('/delivery-charges', async (req, res) => {
+  try {
+    const setting = await Setting.findOne({ key: 'postOfficeDeliveryCharge' });
+    const charge = setting && typeof setting.value === 'number' ? setting.value : 50;
+    res.json({ postOfficeCharge: charge });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -60,7 +148,7 @@ router.post('/orders', verifyToken, async (req, res) => {
   try {
     const { items, paymentMethod, deliveryAddress, deliveryPincode, shippingAddress = {}, deliveryPreference = 'delivery_driver', notes } = req.body;
     const destinationPincode = String(deliveryPincode || req.user.region?.pincode || '').trim();
-    if (!/^\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' })
+    if (!/^\d{6}$/.test(destinationPincode)) return res.status(400).json({ message: 'Enter a valid 6-digit delivery PIN code in your profile or checkout' });
     const allowedDeliveryPreferences = ['delivery_driver', 'post_office'];
     if (!allowedDeliveryPreferences.includes(deliveryPreference)) return res.status(400).json({ message: 'Choose a valid delivery preference' });
     const ship = { ...shippingAddress, pincode: destinationPincode };
@@ -110,7 +198,16 @@ router.post('/orders', verifyToken, async (req, res) => {
       });
     }
 
-    const totalAmount = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+    // Calculate post office delivery charge if selected
+    let postOfficeCharge = 0;
+    if (deliveryPreference === 'post_office') {
+      const setting = await Setting.findOne({ key: 'postOfficeDeliveryCharge' });
+      postOfficeCharge = setting && typeof setting.value === 'number' && setting.value >= 0 ? setting.value : 50;
+    }
+
+    const itemsSubtotal = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalAmount = itemsSubtotal + postOfficeCharge;
+
     const allowedPaymentMethods = ['cash', 'qr', 'online'];
     const selectedPaymentMethod = allowedPaymentMethods.includes(paymentMethod) ? paymentMethod : 'cash';
     const hasService = orderItems.some(i => i.itemType === 'service');
@@ -133,6 +230,8 @@ router.post('/orders', verifyToken, async (req, res) => {
       provider: providerId,
       items: orderItems,
       totalAmount,
+      deliveryCharge: postOfficeCharge,
+      postOfficeCharge: postOfficeCharge,
       paymentMethod: selectedPaymentMethod,
       deliveryAddress: [ship.addressLine1, ship.addressLine2, ship.landmark ? `Landmark: ${ship.landmark}` : '', ship.city, ship.district, ship.state, `PIN: ${destinationPincode}`].filter(Boolean).join(', '),
       shippingAddress: { ...ship, latitude: ship.latitude === '' || ship.latitude == null ? undefined : Number(ship.latitude), longitude: ship.longitude === '' || ship.longitude == null ? undefined : Number(ship.longitude) },
@@ -154,17 +253,18 @@ router.post('/orders', verifyToken, async (req, res) => {
       liveLocation: { isLive: false },
       statusHistory: [{ status: 'pending', changedBy: req.user._id }]
     });
+
     await Promise.all([
       notifyUser(providerId, {
         title: 'New order received',
-        message: `A customer placed order ${order.orderId || order._id}.`,
+        message: `A customer placed order ${order.orderId || order._id} (₹${order.totalAmount}${postOfficeCharge > 0 ? ` including ₹${postOfficeCharge} post office charge` : ''}).`,
         type: 'order',
         link: '/provider/orders',
         metadata: { orderId: String(order._id) },
       }),
       notifyRole('admin', {
         title: 'New marketplace order',
-        message: `Order ${order.orderId || order._id} was placed and is awaiting processing.`,
+        message: `Order ${order.orderId || order._id} was placed for ₹${order.totalAmount}.`,
         type: 'order',
         link: '/admin/orders',
         metadata: { orderId: String(order._id) },
@@ -231,11 +331,10 @@ router.put('/profile', verifyToken, async (req, res) => {
 });
 
 // ── UPI Payment Info for Order ──────────────────────────────────────────────
-// Returns provider's UPI/bank details and the order amount so the customer can pay
 router.get('/orders/:id/payment-info', verifyToken, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
-      .select('orderId totalAmount paymentStatus paymentMethod utrNumber payerPhone paymentSubmittedAt otpVerified status')
+      .select('orderId totalAmount deliveryCharge postOfficeCharge paymentStatus paymentMethod utrNumber payerPhone paymentSubmittedAt otpVerified status')
       .populate('provider', 'name businessName phone upiDetails bankDetails');
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);

@@ -42,7 +42,7 @@ export default function AdminOrders() {
           orders.length === 0 ? <div className="empty-state"><div className="empty-icon">🧾</div><div className="empty-title">No orders</div></div> :
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Order ID</th><th>Customer</th><th>Provider</th><th>Items</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th></tr></thead>
+              <thead><tr><th>Order ID</th><th>Customer</th><th>Provider</th><th>Items</th><th>Amount</th><th>Delivery</th><th>Payment</th><th>Status</th><th>Date</th></tr></thead>
               <tbody>
                 {orders.map(o => (
                   <tr key={o._id}>
@@ -50,7 +50,19 @@ export default function AdminOrders() {
                     <td><div style={{ fontWeight: 600 }}>{o.customer?.name || '—'}</div><div className="text-xs text-muted">{o.customer?.phone}</div></td>
                     <td>{o.provider?.businessName || o.provider?.name || '—'}</td>
                     <td>{o.items?.length || 0} item(s)</td>
-                    <td style={{ fontWeight: 600 }}>₹{o.totalAmount}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      ₹{o.totalAmount}
+                      {(o.postOfficeCharge > 0 || o.deliveryPreference === 'post_office') && (
+                        <div className="text-xs text-saffron" style={{ fontSize: 10 }}>
+                          incl. ₹{o.postOfficeCharge || o.deliveryCharge || 50} postal
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <span className="badge badge-info" style={{ fontSize: 11 }}>
+                        {o.deliveryPreference === 'post_office' ? '📮 Post Office' : '🛵 Driver'}
+                      </span>
+                    </td>
                     <td><span className={`badge badge-${o.paymentStatus === 'paid' ? 'approved' : 'pending'}`}>{o.paymentStatus}</span></td>
                     <td><span className={`badge badge-${STATUS_COLORS[o.status]}`}>{o.status}</span></td>
                     <td className="text-sm text-muted">{new Date(o.createdAt).toLocaleDateString()}</td>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { providerAPI, deliveryAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import AssignWorkerModal from '../../components/AssignWorkerModal';
@@ -251,7 +251,7 @@ export default function ProviderOrders() {
                   </div>
 
                   <div>
-                    <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Order Items</div>
+                    <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Order Items & Bill</div>
                     <div className="bg-navy p-3 rounded border border-navy-border">
                       {o.items.map((i, idx) => (
                         <div key={idx} className="flex justify-between text-sm mb-1">
@@ -259,6 +259,16 @@ export default function ProviderOrders() {
                           <span className="font-medium">₹{i.subtotal}</span>
                         </div>
                       ))}
+                      {(o.postOfficeCharge > 0 || (o.deliveryPreference === 'post_office' && o.deliveryCharge > 0)) && (
+                        <div className="flex justify-between text-sm text-saffron mt-2 pt-2 border-t border-navy-border">
+                          <span>📮 Post Office Delivery Charge:</span>
+                          <span className="font-bold">+₹{o.postOfficeCharge || o.deliveryCharge}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm font-bold mt-2 pt-2 border-t border-navy-border">
+                        <span>Total Amount:</span>
+                        <span className="text-saffron">₹{o.totalAmount}</span>
+                      </div>
                     </div>
 
                     {/* OTP status summary */}

@@ -1123,3 +1123,80 @@ input, select, textarea, button {
     height: 220px;
   }
 }
+
+
+/* ── Print Styles for Statements and Reports ───────────────── */
+.print-only-statement {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .sidebar,
+  .topbar,
+  .no-print,
+  .sidebar-backdrop,
+  .page-header button,
+  .page-header a,
+  .btn,
+  .tabs {
+    display: none !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .app-layout {
+    display: block !important;
+  }
+
+  .screen-only-dashboard {
+    display: none !important;
+  }
+
+  .print-only-statement {
+    display: block !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 10mm 12mm !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+
+  .print-only-statement table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 12px 0 !important;
+  }
+
+  .print-only-statement th,
+  .print-only-statement td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 10px !important;
+    text-align: left !important;
+    color: #0f172a !important;
+    font-size: 9.5pt !important;
+  }
+
+  .print-only-statement th {
+    background: #f1f5f9 !important;
+    font-weight: 700 !important;
+  }
+
+  @page {
+    margin: 10mm;
+    size: auto;
+  }
+}

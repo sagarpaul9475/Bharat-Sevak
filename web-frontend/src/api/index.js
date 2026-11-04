@@ -35,6 +35,9 @@ export const customerAPI = {
   getProducts: (params) => API.get('/customer/products', { params }),
   getServices: (params) => API.get('/customer/services', { params }),
   getMenus: () => API.get('/customer/menus'),
+  getApprovedProductsDropdown: () => API.get('/customer/approved-products-dropdown'),
+  getApprovedProvidersDropdown: () => API.get('/customer/approved-providers-dropdown'),
+  getDeliveryCharges: () => API.get('/customer/delivery-charges'),
   placeOrder: (data) => API.post('/customer/orders', data),
   getOrders: (params) => API.get('/customer/orders', { params }),
   getOrder: (id) => API.get(`/customer/orders/${id}`),
@@ -104,6 +107,9 @@ export const adminAPI = {
   addRegion: (data) => API.post('/admin/regions', data),
   updateRegion: (id, data) => API.put(`/admin/regions/${id}`, data),
   deleteRegion: (id) => API.delete(`/admin/regions/${id}`),
+  // Delivery Settings
+  getDeliverySettings: () => API.get('/admin/settings/delivery'),
+  updateDeliverySettings: (data) => API.put('/admin/settings/delivery', data),
   // Reports
   getSalesReport: () => API.get('/admin/reports/sales'),
   getProviderReport: () => API.get('/admin/reports/providers'),

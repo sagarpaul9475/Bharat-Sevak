@@ -15,6 +15,8 @@ const orderSchema = new mongoose.Schema({
   provider: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [orderItemSchema],
   totalAmount: { type: Number, required: true },
+  deliveryCharge: { type: Number, default: 0, min: 0 },
+  postOfficeCharge: { type: Number, default: 0, min: 0 },
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'assigned', 'out_for_delivery', 'in_progress', 'completed', 'cancelled', 'rejected'],

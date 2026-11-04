@@ -260,7 +260,7 @@ export default function CustomerOrders() {
                   </div>
 
                   <div>
-                    <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Order Items</div>
+                    <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Order Items & Bill</div>
                     <div className="bg-navy p-3 rounded border border-navy-border">
                       {o.items.map((i, idx) => (
                         <div key={idx} className="flex justify-between text-sm mb-1">
@@ -268,6 +268,16 @@ export default function CustomerOrders() {
                           <span className="font-medium">₹{i.subtotal}</span>
                         </div>
                       ))}
+                      {(o.postOfficeCharge > 0 || (o.deliveryPreference === 'post_office' && o.deliveryCharge > 0)) && (
+                        <div className="flex justify-between text-sm text-saffron mt-2 pt-2 border-t border-navy-border">
+                          <span>📮 Post Office Delivery Charge:</span>
+                          <span className="font-bold">+₹{o.postOfficeCharge || o.deliveryCharge}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm font-bold mt-2 pt-2 border-t border-navy-border">
+                        <span>Total Amount:</span>
+                        <span className="text-saffron">₹{o.totalAmount}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -285,7 +295,14 @@ export default function CustomerOrders() {
                       <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([o.shippingAddress.addressLine1, o.shippingAddress.addressLine2, o.shippingAddress.landmark, o.shippingAddress.city, o.shippingAddress.district, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', '))}`} target="_blank" rel="noreferrer">🗺️ Open delivery address in Google Maps</a>
                       {o.shippingAddress.latitude != null && o.shippingAddress.longitude != null && <> · <a href={`https://www.google.com/maps?q=${o.shippingAddress.latitude},${o.shippingAddress.longitude}`} target="_blank" rel="noreferrer">Exact GPS pin</a></>}
                     </div>}
-                    <div className="mt-2"><strong>Delivery preference:</strong> {o.deliveryPreference === 'post_office' ? '📮 Post office / postal service' : '🛵 Delivery driver'}</div>
+                    <div className="mt-2">
+                      <strong>Delivery preference:</strong>{' '}
+                      {o.deliveryPreference === 'post_office' ? (
+                        <span className="text-saffron">📮 Post office / postal service {o.postOfficeCharge ? `(+₹${o.postOfficeCharge})` : ''}</span>
+                      ) : (
+                        '🛵 Delivery driver'
+                      )}
+                    </div>
                     {o.deliveryPreference === 'post_office' && o.postOfficeDetails && <div className="mt-1">
                       {o.postOfficeDetails.preferredPostOffice && <div>Post office: {o.postOfficeDetails.preferredPostOffice} {o.postOfficeDetails.postOfficeAddress}</div>}
                       {o.postOfficeDetails.trackingNumber && <div>Tracking / receipt: {o.postOfficeDetails.trackingNumber}</div>}

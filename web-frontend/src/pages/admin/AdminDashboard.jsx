@@ -6,10 +6,43 @@ import toast from 'react-hot-toast';
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [postOfficeCharge, setPostOfficeCharge] = useState(50);
+  const [savingCharge, setSavingCharge] = useState(false);
+
+  const load = () => {
+    adminAPI.getDashboard()
+      .then(r => {
+        setData(r.data);
+        if (typeof r.data.postOfficeDeliveryCharge === 'number') {
+          setPostOfficeCharge(r.data.postOfficeDeliveryCharge);
+        }
+      })
+      .catch(() => toast.error('Failed to load dashboard'))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    adminAPI.getDashboard().then(r => setData(r.data)).catch(() => toast.error('Failed to load dashboard')).finally(() => setLoading(false));
+    load();
   }, []);
+
+  const handleUpdateCharge = async (e) => {
+    e.preventDefault();
+    const val = Number(postOfficeCharge);
+    if (!Number.isFinite(val) || val < 0) {
+      toast.error('Please enter a valid non-negative amount');
+      return;
+    }
+    setSavingCharge(true);
+    try {
+      await adminAPI.updateDeliverySettings({ postOfficeDeliveryCharge: val });
+      toast.success(`Post office delivery charge updated to ₹${val}`);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update delivery charge');
+    } finally {
+      setSavingCharge(false);
+    }
+  };
 
   if (loading) return <div className="loading-center"><div className="spinner" /><span>Loading...</span></div>;
 
@@ -49,6 +82,40 @@ export default function AdminDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Manual Post Office Delivery Charge Settings Card */}
+      <div className="card mb-6" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(15,23,42,0.95))', border: '1px solid rgba(245,158,11,0.3)' }}>
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span style={{ fontSize: 24 }}>📮</span>
+              <h2 style={{ fontSize: 18, fontWeight: 700 }}>Post Office Delivery Charge (Manual Setting)</h2>
+            </div>
+            <p className="text-sm text-muted" style={{ maxWidth: 640 }}>
+              Set the standard delivery fee charged when customers select <strong>Post Office / Postal Service</strong> at checkout.
+              This charge is automatically displayed to the customer and added to the order's total amount.
+            </p>
+          </div>
+          <form onSubmit={handleUpdateCharge} className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--navy)', border: '1px solid var(--navy-border)', borderRadius: 8, padding: '4px 12px' }}>
+              <span style={{ color: 'var(--saffron)', fontWeight: 700, marginRight: 6 }}>₹</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className="form-input"
+                style={{ width: 100, border: 'none', background: 'transparent', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}
+                value={postOfficeCharge}
+                onChange={e => setPostOfficeCharge(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={savingCharge}>
+              {savingCharge ? '⏳ Saving...' : '💾 Save Charge'}
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Quick Actions */}

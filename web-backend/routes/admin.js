@@ -6,6 +6,7 @@ const Service = require('../models/Service');
 const Order = require('../models/Order');
 const Menu = require('../models/Menu');
 const Region = require('../models/Region');
+const Setting = require('../models/Setting');
 const bcrypt = require('bcryptjs');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { notifyUser } = require('../utils/notifications');
@@ -15,7 +16,7 @@ const adminGuard = [verifyToken, requireRole('admin')];
 // ── Dashboard Stats ──────────────────────────────────────────
 router.get('/dashboard', adminGuard, async (req, res) => {
   try {
-    const [users, providers, customers, products, services, orders, pendingProviders, pendingProducts] =
+    const [users, providers, customers, products, services, orders, pendingProviders, pendingProducts, deliveryChargeSetting] =
       await Promise.all([
         User.countDocuments(),
         User.countDocuments({ role: 'provider' }),
@@ -25,6 +26,7 @@ router.get('/dashboard', adminGuard, async (req, res) => {
         Order.countDocuments(),
         User.countDocuments({ role: 'provider', status: 'pending' }),
         Product.countDocuments({ status: 'pending' }),
+        Setting.findOne({ key: 'postOfficeDeliveryCharge' }),
       ]);
     const revenue = await Order.aggregate([
       { $match: { paymentStatus: 'paid' } },
@@ -32,7 +34,23 @@ router.get('/dashboard', adminGuard, async (req, res) => {
     ]);
     const recentOrders = await Order.find().sort('-createdAt').limit(5)
       .populate('customer', 'name').populate('provider', 'name businessName');
-    res.json({ users, providers, customers, products, services, orders, pendingProviders, pendingProducts, revenue: revenue[0]?.total || 0, recentOrders });
+    const postOfficeDeliveryCharge = deliveryChargeSetting && typeof deliveryChargeSetting.value === 'number'
+      ? deliveryChargeSetting.value
+      : 50;
+
+    res.json({
+      users,
+      providers,
+      customers,
+      products,
+      services,
+      orders,
+      pendingProviders,
+      pendingProducts,
+      revenue: revenue[0]?.total || 0,
+      recentOrders,
+      postOfficeDeliveryCharge,
+    });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -364,6 +382,31 @@ router.delete('/regions/:id', adminGuard, async (req, res) => {
   try {
     await Region.findByIdAndDelete(req.params.id);
     res.json({ message: 'Region deleted' });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── Settings (Delivery charges, etc.) ───────────────────────
+router.get('/settings/delivery', adminGuard, async (req, res) => {
+  try {
+    const setting = await Setting.findOne({ key: 'postOfficeDeliveryCharge' });
+    const charge = setting && typeof setting.value === 'number' ? setting.value : 50;
+    res.json({ postOfficeDeliveryCharge: charge });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.put('/settings/delivery', adminGuard, async (req, res) => {
+  try {
+    const { postOfficeDeliveryCharge } = req.body;
+    const charge = Number(postOfficeDeliveryCharge);
+    if (!Number.isFinite(charge) || charge < 0) {
+      return res.status(400).json({ message: 'Post office delivery charge must be a valid non-negative number' });
+    }
+    const setting = await Setting.findOneAndUpdate(
+      { key: 'postOfficeDeliveryCharge' },
+      { value: charge, updatedBy: req.user._id, description: 'Post office delivery charge in INR' },
+      { upsert: true, new: true }
+    );
+    res.json({ message: 'Post office delivery charge updated successfully', postOfficeDeliveryCharge: setting.value });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
