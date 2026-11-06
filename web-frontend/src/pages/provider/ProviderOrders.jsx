@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { providerAPI, deliveryAPI } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import AssignWorkerModal from '../../components/AssignWorkerModal';
@@ -13,7 +13,18 @@ function PostOfficeDispatchForm({ order, onSave }) {
   const [saving, setSaving] = useState(false);
   const submit = async (status) => { setSaving(true); try { await onSave({ ...form, status }); } catch (e) { toast.error(e.response?.data?.message || 'Could not save postal details'); } finally { setSaving(false); } };
   return <div className="mt-2 p-3 rounded" style={{ background: 'var(--navy-border)' }}>
-    <strong>Postal dispatch coordination</strong>
+    <div className="flex items-center justify-between" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+      <strong>Postal dispatch coordination</strong>
+      <a
+        href="https://www.indiapost.gov.in/calculate-postage"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn btn-secondary btn-sm"
+        style={{ fontSize: 11, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      >
+        📮 India Post Postage Calculator ↗
+      </a>
+    </div>
     <label className="form-label mt-2">Selected post office<input className="form-input mt-1" value={form.preferredPostOffice} onChange={e => setForm({ ...form, preferredPostOffice: e.target.value })} placeholder="Post office name" /></label>
     <label className="form-label mt-2">Post office address<input className="form-input mt-1" value={form.postOfficeAddress} onChange={e => setForm({ ...form, postOfficeAddress: e.target.value })} placeholder="Address of selected post office" /></label>
     <label className="form-label mt-2">Tracking / receipt number<input className="form-input mt-1" value={form.trackingNumber} onChange={e => setForm({ ...form, trackingNumber: e.target.value })} placeholder="Enter after booking postage" /></label>

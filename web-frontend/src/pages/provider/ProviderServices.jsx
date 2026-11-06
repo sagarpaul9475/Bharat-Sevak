@@ -53,7 +53,19 @@ export default function ProviderServices() {
           <h1 className="page-title">🛠️ My Services</h1>
           <p className="page-subtitle">Manage the services you offer</p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}>➕ Add Service</button>
+        <div className="flex gap-2" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <a
+            href="https://www.indiapost.gov.in/calculate-postage"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            title="Open official India Post postage calculator"
+          >
+            <span>📮</span> Postal Calculator ↗
+          </a>
+          <button className="btn btn-primary" onClick={openNew}>➕ Add Service</button>
+        </div>
       </div>
 
       {loading ? <div className="loading-center"><div className="spinner" /></div> : (

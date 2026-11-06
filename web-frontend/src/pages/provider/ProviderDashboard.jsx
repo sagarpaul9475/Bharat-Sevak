@@ -18,7 +18,48 @@ export default function ProviderDashboard() {
   }, []);
 
   const handlePrint = () => {
-    window.print();
+    const printContent = document.getElementById('bharat-sevak-printable-statement');
+    if (!printContent) {
+      window.print();
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=900,height=850');
+    if (printWindow) {
+      printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Bharat Sevak - Provider Business Statement</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+      body { background: #ffffff !important; color: #0F172A !important; padding: 24px; font-size: 11pt; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+      th, td { border: 1px solid #CBD5E1; padding: 8px 10px; text-align: left; font-size: 9.5pt; color: #0F172A; }
+      th { background: #F1F5F9; font-weight: 700; }
+      @page { margin: 10mm; size: auto; }
+      @media print {
+        body { padding: 0 !important; }
+      }
+    </style>
+  </head>
+  <body>
+    ${printContent.innerHTML}
+  </body>
+</html>`);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        try {
+          printWindow.print();
+          printWindow.close();
+        } catch {
+          window.print();
+        }
+      }, 350);
+    } else {
+      window.print();
+    }
   };
 
   if (loading) return <div className="loading-center"><div className="spinner" /><span>Loading...</span></div>;
@@ -46,6 +87,16 @@ export default function ProviderDashboard() {
             <p className="page-subtitle">Manage your business, orders, and print official performance statements</p>
           </div>
           <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+            <a
+              href="https://www.indiapost.gov.in/calculate-postage"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              title="Open official India Post postage & parcel calculator"
+            >
+              <span>📮</span> India Post Calculator ↗
+            </a>
             <button
               type="button"
               className="btn btn-secondary"
@@ -114,7 +165,7 @@ export default function ProviderDashboard() {
         </div>
 
         {/* Quick action cards */}
-        <div className="grid-3" style={{ marginBottom: 24 }}>
+        <div className="grid-4" style={{ marginBottom: 24 }}>
           <Link to="/provider/products" className="card" style={{ textDecoration: 'none', display: 'block' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
             <h3 style={{ fontSize: 16, marginBottom: 4 }}>Manage Products</h3>
@@ -131,6 +182,17 @@ export default function ProviderDashboard() {
             <p className="text-muted text-sm">Process incoming orders and update status</p>
             {data?.pendingOrders > 0 && <div className="badge badge-pending" style={{ marginTop: 10 }}>{data.pendingOrders} pending</div>}
           </Link>
+          <a
+            href="https://www.indiapost.gov.in/calculate-postage"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card"
+            style={{ textDecoration: 'none', display: 'block' }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📮</div>
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>Postal Calculator</h3>
+            <p className="text-muted text-sm">Calculate parcel & speed post shipping postage for postal orders</p>
+          </a>
         </div>
 
         {/* Orders & Co-Providers */}
@@ -190,7 +252,7 @@ export default function ProviderDashboard() {
       </div>
 
       {/* ── Official Printable Statement (Hidden on screen, Visible on print) ── */}
-      <div className="print-only-statement">
+      <div id="bharat-sevak-printable-statement" className="print-only-statement">
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0F172A', paddingBottom: 16, marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -431,7 +493,7 @@ export default function ProviderDashboard() {
               <span className="text-xs text-muted">You can save this statement as PDF or print to physical paper.</span>
               <div className="flex gap-2">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowPrintModal(false)}>Close</button>
-                <button type="button" className="btn btn-primary" onClick={() => { setShowPrintModal(false); setTimeout(() => window.print(), 200); }}>
+                <button type="button" className="btn btn-primary" onClick={() => { setShowPrintModal(false); setTimeout(() => handlePrint(), 200); }}>
                   🖨️ Print / Save as PDF
                 </button>
               </div>

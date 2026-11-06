@@ -89,7 +89,17 @@ export default function DeliveryDashboard() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <a
+            href="https://www.indiapost.gov.in/calculate-postage"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            title="Open official India Post postage & parcel calculator"
+          >
+            <span>📮</span> India Post Calculator ↗
+          </a>
           <button className="btn btn-secondary btn-sm" onClick={loadTasks}>
             🔄 Refresh Tasks
           </button>

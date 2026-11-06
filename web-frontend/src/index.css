@@ -1126,18 +1126,45 @@ input, select, textarea, button {
 
 
 /* ── Print Styles for Statements and Reports ───────────────── */
-.print-only-statement {
+.print-only-statement,
+#bharat-sevak-printable-statement {
   display: none;
 }
 
 @media print {
-  body {
+  /* Complete Reset for Print Paginator across Chromium, Safari, Firefox */
+  html,
+  body,
+  #root,
+  .app-layout,
+  .main-content,
+  .page-content {
     background: #ffffff !important;
     color: #0f172a !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    display: block !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
     font-size: 11pt !important;
     line-height: 1.4 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    box-shadow: none !important;
   }
 
   .sidebar,
@@ -1147,42 +1174,42 @@ input, select, textarea, button {
   .page-header button,
   .page-header a,
   .btn,
-  .tabs {
+  .tabs,
+  .hide-on-print,
+  .modal-overlay {
     display: none !important;
-  }
-
-  .main-content {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .app-layout {
-    display: block !important;
   }
 
   .screen-only-dashboard {
     display: none !important;
   }
 
-  .print-only-statement {
+  .print-only-statement,
+  #bharat-sevak-printable-statement {
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     background: #ffffff !important;
     color: #0f172a !important;
-    padding: 10mm 12mm !important;
+    padding: 8mm 10mm !important;
     box-sizing: border-box !important;
     width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    position: static !important;
   }
 
-  .print-only-statement table {
+  .print-only-statement table,
+  #bharat-sevak-printable-statement table {
     width: 100% !important;
     border-collapse: collapse !important;
     margin: 12px 0 !important;
   }
 
   .print-only-statement th,
-  .print-only-statement td {
+  .print-only-statement td,
+  #bharat-sevak-printable-statement th,
+  #bharat-sevak-printable-statement td {
     border: 1px solid #cbd5e1 !important;
     padding: 8px 10px !important;
     text-align: left !important;
@@ -1190,7 +1217,8 @@ input, select, textarea, button {
     font-size: 9.5pt !important;
   }
 
-  .print-only-statement th {
+  .print-only-statement th,
+  #bharat-sevak-printable-statement th {
     background: #f1f5f9 !important;
     font-weight: 700 !important;
   }

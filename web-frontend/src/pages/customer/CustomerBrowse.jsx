@@ -248,9 +248,21 @@ export default function CustomerBrowse() {
           <h1 className="page-title">🛍️ Explore Local Services & Products</h1>
           <p className="page-subtitle">Support daily workers in your community</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCart(true)}>
-          🛒 Cart {cart.length > 0 && <span className="nav-badge" style={{ background: 'white', color: 'var(--saffron)' }}>{cart.length}</span>}
-        </button>
+        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+          <a
+            href="https://www.indiapost.gov.in/calculate-postage"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            title="Open official India Post postage & parcel calculator"
+          >
+            <span>📮</span> Postal Calculator ↗
+          </a>
+          <button className="btn btn-primary" onClick={() => setShowCart(true)}>
+            🛒 Cart {cart.length > 0 && <span className="nav-badge" style={{ background: 'white', color: 'var(--saffron)' }}>{cart.length}</span>}
+          </button>
+        </div>
       </div>
 
       {/* Main Search & Comprehensive Filter Controls */}
@@ -389,6 +401,22 @@ export default function CustomerBrowse() {
             {pincode && <span className="badge badge-info text-xs">PIN: {pincode}</span>}
           </div>
         )}
+
+        {/* Quick postal calculator link for customers & shoppers */}
+        <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--navy-border)', flexWrap: 'wrap', gap: 8 }}>
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <span>📮 Need to estimate parcel or speed post costs before ordering?</span>
+          </div>
+          <a
+            href="https://www.indiapost.gov.in/calculate-postage"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <span>📮</span> India Post Postage Calculator ↗
+          </a>
+        </div>
       </div>
 
       {loading ? <div className="loading-center"><div className="spinner" /></div> : (
@@ -578,7 +606,20 @@ export default function CustomerBrowse() {
 
                 {deliveryPreference === 'post_office' && (
                   <div className="p-3 rounded mt-2 text-xs" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#FCD34D' }}>
-                    📮 <strong>Post Office Delivery Charge:</strong> An official postal fee of <strong>₹{postOfficeCharge}</strong> is added to your order. The provider will dispatch through the post office and provide a tracking receipt.
+                    <div className="flex items-center justify-between" style={{ flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        📮 <strong>Post Office Delivery Charge:</strong> An official postal fee of <strong>₹{postOfficeCharge}</strong> is added to your order. The provider will dispatch through the post office and provide a tracking receipt.
+                      </div>
+                      <a
+                        href="https://www.indiapost.gov.in/calculate-postage"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, background: '#1E293B', color: '#F8FAFC' }}
+                      >
+                        📮 India Post Rates ↗
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>
