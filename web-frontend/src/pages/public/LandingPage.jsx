@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+dimport { Link } from 'react-router-dom';
 import PledgeContent, { PLEDGE_TITLE } from '../../components/PledgeContent';
 import '../../pledge.css';
 
@@ -45,6 +45,7 @@ export default function LandingPage() {
           <Link to="/login" className="btn btn-secondary btn-sm">Login</Link>
           <Link to="/register" className="btn btn-primary btn-sm">Get Started</Link>
           <Link to="/pledge" className="btn btn-secondary btn-sm">Pledge &amp; Terms</Link>
+          <a href="/news/index.html" className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>📰 সাপ্তাহিক সংবাদ ও প্রচার</a>
         </div>
       </nav>
 
@@ -84,6 +85,9 @@ export default function LandingPage() {
           <Link to="/register?role=delivery" className="btn btn-secondary" style={{ flex: '1 1 100%', padding: '11px 24px', fontSize: 14, justifyContent: 'center', border: '1px solid #3B82F6', color: '#60A5FA' }}>
             🛵 Join as Delivery / Field Technician
           </Link>
+          <a href="/news/index.html" className="btn btn-secondary" style={{ flex: '1 1 100%', padding: '12px 24px', fontSize: 15, justifyContent: 'center', textDecoration: 'none', border: '1px solid #16A34A', color: '#86EFAC' }}>
+            📰 সাপ্তাহিক সংবাদ ও প্রচার
+          </a>
         </div>
 
         {/* Stats */}
